@@ -748,4 +748,3 @@ const response = await executeRequest(apiContext, '/endpoint', 'post', { data })
 **Built with ❤️ using [Playwright](https://playwright.dev)**
 
 </div>
-]]>
