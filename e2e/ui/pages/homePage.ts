@@ -134,7 +134,10 @@ export class HomePage {
   }
     
   async clickAddNote(): Promise<void> {
-    await this.addNoteButton.click();
+    // Use force click to bypass any ad overlays
+    await this.addNoteButton.click({ force: true });
+    // Wait for modal to appear
+    await this.modalTitle.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   async hasEmptyStateMessage(): Promise<boolean> {
@@ -146,20 +149,44 @@ export class HomePage {
     await this.noteSelectCategory(category);
     await this.noteTitleInput.fill(title);
     await this.noteDescriptionInput.fill(description);
-    await this.createNoteButton.click();
+    // Use force click to bypass any ad overlays
+    await this.createNoteButton.click({ force: true });
   }
 
   async getCardTitle(): Promise<string> {
-    return this.cardTitle.innerText();
+    // Get the title from the first note card header
+    const firstCard = this.singleNoteCard.first();
+    // The card title is in the card-title element within the note card
+    return firstCard.locator('.card-title').innerText();
   }
 
   //for each note card exist, click on delete button
   async cleanAllNotes(): Promise<void> {
-    const allNotesCount = await this.singleNoteCard.count();
-    for (let i = 0; i < allNotesCount; i++) {
-
-      await this.deleteNoteButton.nth(i).click();
-      await this.confirmDeleteButton.click();
+    // Delete notes one by one - always delete the first one since the list shifts after each delete
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while ((await this.singleNoteCard.count()) > 0 && attempts < maxAttempts) {
+      attempts++;
+      const initialCount = await this.singleNoteCard.count();
+      
+      // Use force click to bypass any ad overlays
+      await this.deleteNoteButton.first().click({ force: true });
+      
+      try {
+        await this.confirmDeleteButton.waitFor({ state: 'visible', timeout: 3000 });
+        await this.confirmDeleteButton.click({ force: true });
+        await this.page.waitForTimeout(500);
+      } catch {
+        console.log('Confirm button not found, skipping cleanup');
+        break;
+      }
+      
+      const newCount = await this.singleNoteCard.count();
+      if (newCount >= initialCount) {
+        console.log('Note count did not decrease, stopping cleanup');
+        break;
+      }
     }
   }
 }

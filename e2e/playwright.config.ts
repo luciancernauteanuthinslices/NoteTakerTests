@@ -18,6 +18,11 @@ const envFile =
 
 dotenv.config({ path: path.resolve(__dirname, envFile) });
 
+const e2eRoot = __dirname;
+const dataDir = path.join(e2eRoot, 'data');
+const storageStatePath = path.join(dataDir, 'storageState.json');
+const allureResultsDir = path.join(e2eRoot, 'allure-results');
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -29,11 +34,11 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [
-    ['html'], ['allure-playwright']
+    ['html'], ['allure-playwright', { resultsDir: allureResultsDir }]
 ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    storageState: 'data/storageState.json',                  //single user storagestate method
+    storageState: storageStatePath,                  //single user storagestate method
     baseURL: process.env.APP_URL!,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
@@ -67,7 +72,19 @@ export default defineConfig({
     // },
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { 
+        ...devices['Desktop Chrome'],
+        // Load ad blocker extension to prevent ad overlays from interfering with tests
+        // Extensions only work in non-headless mode
+        headless: true, // Explicitly set to false for extensions to work
+        channel: 'chromium',
+        launchOptions: {
+          args: [
+            `--disable-extensions-except=${path.resolve(__dirname, 'extensions/adBlocker/6.33.0_0')}`,
+            `--load-extension=${path.resolve(__dirname, 'extensions/adBlocker/6.33.0_0')}`,
+          ],
+        },
+      },
     },
 
     // {

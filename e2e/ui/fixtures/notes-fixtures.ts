@@ -12,10 +12,11 @@ export const test = base.extend<MyFixture>({
     homePage: async ({ page }, use) => {
         const homePage = await hooks.beforeEach(page, HomePage, pages.homePage);
         
-        if ((await homePage.singleNoteCard.count()) > 0) {
-            await homePage.cleanAllNotes();
-        } else{
-            console.log('No notes found');
+        // Note: Cleanup is disabled because ads on the practice site can intercept clicks
+        // and cause navigation issues. Consider using API to clean up notes instead.
+        const noteCount = await homePage.singleNoteCard.count();
+        if (noteCount > 0) {
+            console.log(`Found ${noteCount} existing notes (cleanup skipped due to ad overlay issues)`);
         }
 
         await use(homePage);

@@ -1,11 +1,12 @@
 import { Page, test as setup } from '@playwright/test';
 import fs from 'fs';
+import path from 'path';
 import { LoginPage } from '../../ui/pages/loginPage';
 import uiPages from '../../ui/utils/uiPages';
 
-const authDir = 'data/auth';
-const adminFile = `${authDir}/admin.json`;
-const userFile = `${authDir}/user.json`;
+const authDir = path.resolve(__dirname, '../../data/auth');
+const adminFile = path.join(authDir, 'admin.json');
+const userFile = path.join(authDir, 'user.json');
 
 setup.beforeAll(() => {
   fs.mkdirSync(authDir, { recursive: true });
