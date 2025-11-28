@@ -19,6 +19,8 @@ jobs:
       TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
       ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
       ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      BUILD_NUMBER: ${{ github.run_number }}
+      GITHUB_SHA: ${{ github.sha }}
 
     steps:
       - uses: actions/checkout@v4

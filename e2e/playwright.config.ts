@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
+
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
@@ -36,7 +37,18 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [
-    ['html'], ['allure-playwright', { resultsDir: allureResultsDir }]
+    ['html'], ['allure-playwright', { 
+      resultsDir: allureResultsDir, 
+      detail: true,
+      suiteTitle: false,
+      environmentInfo: {
+        appEnv: process.env.ENV,
+        appUrl: process.env.APP_URL,
+        buildNumber: process.env.BUILD_NUMBER,
+        commit: process.env.GITHUB_SHA,
+        node_version: process.version,
+      },
+    }]
 ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
