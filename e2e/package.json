@@ -1,0 +1,25 @@
+{
+  "name": "notetaker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test-auth-admin": "playwright test tests/authSetup.ts --project=chromium-auth",
+    "test-auth-user": "playwright test tests/authSetup.ts --project=chromium-auth"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^24.10.1",
+    "allure-playwright": "^3.4.2"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^10.1.0",
+    "csv-parse": "^6.1.0",
+    "dotenv": "^17.2.3",
+    "xlsx": "^0.18.5"
+  }
+}
