@@ -1,2 +1,0 @@
-Using API URL: https://practice.expandtesting.com/notes/api
-Using email: luciancernauteanu@gmail.com

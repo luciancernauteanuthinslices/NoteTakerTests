@@ -1,7 +1,0 @@
-Using API URL: https://practice.expandtesting.com/notes/api
-Using email: luciancernauteanu@gmail.com
-Making login request to: https://practice.expandtesting.com/notes/api/users/login
-Login response status: 200
-Logged in successfully, token obtained
-Successfully got user profile
-6925b456b1c39f029817c84c

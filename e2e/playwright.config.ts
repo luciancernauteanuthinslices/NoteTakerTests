@@ -39,7 +39,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     ignoreHTTPSErrors: true, // Ignore SSL errors if necessary
     permissions: ['geolocation'], // Set necessary permissions for geolocation-based tests
-    headless: false,
+    headless: !!process.env.CI,
   },
 
   /* Configure projects for major browsers */
