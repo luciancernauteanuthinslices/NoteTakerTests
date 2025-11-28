@@ -22,6 +22,7 @@ const e2eRoot = __dirname;
 const dataDir = path.join(e2eRoot, 'data');
 const storageStatePath = path.join(dataDir, 'storageState.json');
 const allureResultsDir = path.join(e2eRoot, 'allure-results');
+const testResultsDir = path.join(e2eRoot, 'test-results');
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -29,6 +30,7 @@ const allureResultsDir = path.join(e2eRoot, 'allure-results');
 export default defineConfig({
   globalSetup: require.resolve('./tests/setup/globalSetup'), //single user storagestate method
   testDir: './tests',
+  outputDir: testResultsDir,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
