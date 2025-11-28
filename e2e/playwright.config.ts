@@ -91,14 +91,7 @@ export default defineConfig({
         // Load ad blocker extension to prevent ad overlays from interfering with tests
         // Extensions only work in non-headless mode
         headless: true, // Explicitly set to false for extensions to work
-        channel: 'chromium',
-        launchOptions: {
-          args: [
-            `--disable-extensions-except=${path.resolve(__dirname, 'extensions/adBlocker/6.33.0_0')}`,
-            `--load-extension=${path.resolve(__dirname, 'extensions/adBlocker/6.33.0_0')}`,
-          ],
-        },
-      },
+      }
     },
 
     // {
