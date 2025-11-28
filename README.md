@@ -1,5 +1,3 @@
-<![CDATA[<div align="center">
-
 # 🗒️ NoteTaker E2E Test Automation Framework
 
 A **production-ready** Playwright test automation framework with multi-environment support, multi-role authentication, Page Object Model, API integration, and comprehensive test fixtures.
@@ -746,8 +744,6 @@ const response = await executeRequest(apiContext, '/endpoint', 'post', { data })
 | `ui/utils/` | Helper utilities | Endpoints, hooks, messages |
 
 ---
-
-<div align="center">
 
 **Built with ❤️ using [Playwright](https://playwright.dev)**
 
