@@ -52,7 +52,7 @@ jobs:
 
       - name: Run Playwright tests with Allure
         working-directory: e2e
-        run: npx playwright test --reporter=line,allure-playwright
+        run: npx playwright test
         continue-on-error: true
 
       - name: Upload allure results
