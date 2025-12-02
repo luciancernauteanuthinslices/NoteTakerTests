@@ -55,22 +55,6 @@ jobs:
         run: npx playwright test
         continue-on-error: true
 
-      - name: Debug - list allure-results
-        if: always()
-        working-directory: e2e
-        run: |
-          echo "=== Content of allure-results ==="
-          ls -la allure-results || echo "NO allure-results DIR"
-          echo "--- JSON files count ---"
-          find allure-results -name "*.json" 2>/dev/null | wc -l || echo "0"
-
-      - name: Upload allure results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: allure-results-playwright
-          path: e2e/allure-results
-
       - name: Generate Allure HTML
         if: always()
         working-directory: e2e
@@ -83,7 +67,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
-          path: e2e/allure-report
+          path: |
+            e2e/allure-report
+            e2e/allure-results
+          include-hidden-files: false
 
       - name: Add Allure Report link to summary
         if: always()
