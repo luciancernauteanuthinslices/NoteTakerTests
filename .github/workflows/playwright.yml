@@ -82,11 +82,64 @@ jobs:
           name: allure-report
           path: e2e/allure-report
 
+      # ═══════════════════════════════════════════════════════════════
+      # 🔬 Schemathesis API Testing
+      # ═══════════════════════════════════════════════════════════════
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Schemathesis dependencies
+        working-directory: e2e/schemathesis
+        run: pip install -r requirements.txt
+
+      - name: Run Schemathesis API tests
+        working-directory: e2e/schemathesis
+        run: python run_schemathesis.py
+        continue-on-error: true
+
+      - name: Generate Schemathesis Allure HTML report
+        if: always()
+        run: |
+          allure generate e2e/schemathesis/allure-results --clean -o e2e/schemathesis/allure-report || echo "No Schemathesis results to generate"
+
+      - name: Upload Schemathesis Allure report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schemathesis-allure-report
+          path: e2e/schemathesis/allure-report
+
+      # ═══════════════════════════════════════════════════════════════
+      # 📊 Summary
+      # ═══════════════════════════════════════════════════════════════
+
       - name: Add Allure Report link to summary
         if: always()
         run: |
-          echo "## 📊 Allure Report" >> $GITHUB_STEP_SUMMARY
+          echo "## 📊 Test Reports" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Download the **allure-report** artifact from the Artifacts section of this run." >> $GITHUB_STEP_SUMMARY
+          echo "### Available Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "| Report | Description |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **allure-report** | Playwright E2E test results |" >> $GITHUB_STEP_SUMMARY
+          echo "| **schemathesis-allure-report** | Schemathesis API fuzz test results |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "To view: download, extract, and open \`index.html\` in your browser." >> $GITHUB_STEP_SUMMARY
+          echo "### How to View Reports" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download the artifact from the *Artifacts* section of this run." >> $GITHUB_STEP_SUMMARY
+          echo "2. Extract the archive locally." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Option A – Open directly (may be limited)" >> $GITHUB_STEP_SUMMARY
+          echo "- Double-click \`index.html\`. If the report looks empty, use Option B or C below." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Option B – Use Allure CLI (recommended)" >> $GITHUB_STEP_SUMMARY
+          echo "- Install Allure CLI (once): \`npm install -g allure-commandline\`" >> $GITHUB_STEP_SUMMARY
+          echo "- In a terminal: \`allure open /path/to/report-folder\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Option C – Serve with a simple HTTP server" >> $GITHUB_STEP_SUMMARY
+          echo "- In a terminal, go to the extracted folder: \`cd /path/to/report-folder\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Run: \`npx http-server .\` or \`python -m http.server 8000\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Open the shown URL in your browser (for example, http://localhost:8080)." >> $GITHUB_STEP_SUMMARY

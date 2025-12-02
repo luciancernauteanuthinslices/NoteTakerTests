@@ -5,7 +5,11 @@
   "main": "index.js",
   "scripts": {
     "test-auth-admin": "playwright test tests/authSetup.ts --project=chromium-auth",
-    "test-auth-user": "playwright test tests/authSetup.ts --project=chromium-auth"
+    "test-auth-user": "playwright test tests/authSetup.ts --project=chromium-auth",
+    "schemathesis": "cd schemathesis && ./venv/bin/python run_schemathesis.py",
+    "schemathesis:dev": "cd schemathesis && ENV=dev ./venv/bin/python run_schemathesis.py",
+    "schemathesis:prod": "cd schemathesis && ENV=prod ./venv/bin/python run_schemathesis.py",
+    "schemathesis:report": "allure serve schemathesis/allure-results"
   },
   "keywords": [],
   "author": "",

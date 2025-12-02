@@ -32,6 +32,17 @@ Thumbs.db
 .vscode/
 *.swp
 
-#allure report
+# Allure reports
 allure-report/
 allure-results/
+
+# Schemathesis
+schemathesis-allure-results/
+schemathesis-allure-report/
+schemathesis-report/
+.hypothesis/
+
+# Virtual environment
+myenv/
+.venv/
+venv/

@@ -1,0 +1,11 @@
+# Schemathesis API Testing Dependencies
+# Install with: pip install -r requirements.txt
+
+# Core testing
+schemathesis>=3.27.0
+
+# HTTP requests for authentication
+requests>=2.31.0
+
+# Optional: python-dotenv for .env loading (not required, script has built-in loader)
+# python-dotenv>=1.0.0
