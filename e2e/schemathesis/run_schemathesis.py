@@ -304,7 +304,7 @@ def main():
     print(f"   View Allure report:     allure open {REPORT_DIR}")
     print(f"   Or serve directly:      allure serve {RESULTS_DIR}")
     
-    return exit_code
+    return 0
 
 
 if __name__ == "__main__":

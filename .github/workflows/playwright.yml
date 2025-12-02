@@ -135,11 +135,13 @@ jobs:
           echo "#### Option A – Open directly (may be limited)" >> $GITHUB_STEP_SUMMARY
           echo "- Double-click \`index.html\`. If the report looks empty, use Option B or C below." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### Option B – Use Allure CLI (recommended)" >> $GITHUB_STEP_SUMMARY
-          echo "- Install Allure CLI (once): \`npm install -g allure-commandline\`" >> $GITHUB_STEP_SUMMARY
-          echo "- In a terminal: \`allure open /path/to/report-folder\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### Option C – Serve with a simple HTTP server" >> $GITHUB_STEP_SUMMARY
+          echo "#### Option B – Serve with a simple HTTP server" >> $GITHUB_STEP_SUMMARY
           echo "- In a terminal, go to the extracted folder: \`cd /path/to/report-folder\`" >> $GITHUB_STEP_SUMMARY
           echo "- Run: \`npx http-server .\` or \`python -m http.server 8000\`" >> $GITHUB_STEP_SUMMARY
           echo "- Open the shown URL in your browser (for example, http://localhost:8080)." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### Option C – Use Allure CLI (recommended)" >> $GITHUB_STEP_SUMMARY
+          echo "- Install Allure CLI (once): \`npm install -g allure-commandline\`" >> $GITHUB_STEP_SUMMARY
+          echo "- In a terminal: \`allure open /path/to/report-folder\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
