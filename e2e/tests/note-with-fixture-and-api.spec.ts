@@ -1,5 +1,6 @@
 import { test as apiTest, expect } from '../ui/fixtures/login-with-api-token-fixture';
 import notesApi, { NoteData } from '../ui/api/requests/notes-api';
+import * as allure from 'allure-playwright';
 
 apiTest.describe.configure({ mode: 'serial' });
 
@@ -8,6 +9,7 @@ let createdNote: NoteData;
 apiTest.describe('Notes - Fixture & API', () => {
     // apiContext is now provided by the fixture - just destructure it in the test
     apiTest('Create note via API, verify ID, then delete', async ({ apiContext }) => {
+       
         // Step 1: Create a new note via API
         const createNoteResponse = await notesApi.createNote(
             apiContext,

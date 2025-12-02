@@ -7,6 +7,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     env:
       # non‑secret config
       APP_URL: https://practice.expandtesting.com/notes/app
@@ -69,9 +73,25 @@ jobs:
           npm install -g allure-commandline
           allure generate allure-results --clean -o allure-report
 
-      - name: Upload Allure HTML report
+      - name: Upload Allure Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: allure-report-playwright
           path: e2e/allure-report
+
+      - name: Deploy to GitHub Pages
+        if: always()
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Add comment with report URL
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `📊 [View Allure Report](${{ steps.deployment.outputs.page_url }})`
+            });

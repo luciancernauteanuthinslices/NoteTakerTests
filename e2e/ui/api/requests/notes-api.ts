@@ -94,7 +94,7 @@ export async function deleteNoteById(
   apiContext: APIRequestContext,
   noteId: string
 ): Promise<DeleteNoteResponse> {
-  const response = await apiContext.delete(getFullUrl(`/notes/${noteId}`));
+  const response = await apiContext.delete(getFullUrl(apiEndpoints.notes.deleteNote+noteId));
   
   if (!response.ok()) {
     throw new Error(`Delete note failed with status ${response.status()}: ${await response.text()}`);
