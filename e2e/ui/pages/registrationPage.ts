@@ -15,10 +15,10 @@ export class RegistrationPage {
   constructor(page: Page) {
     this.page = page;
 
-    this.emailInput = page.getByLabel('Email address');
-    this.nameInput = page.getByLabel('Name');
-    this.passwordInput = page.getByLabel('Password');
-    this.confirmPasswordInput = page.getByLabel('Confirm Password');
+    this.emailInput = page.locator('#email');
+    this.nameInput = page.locator('#name');
+    this.passwordInput = page.locator('#password');
+    this.confirmPasswordInput = page.locator('#confirmPassword');
     this.registerButton = page.getByRole('button', { name: 'Register' });
     this.registerWithGoogleLink = page.getByRole('link', { name: 'Register with Google' });
     this.registerWithLinkedInLink = page.getByRole('link', { name: 'Register with LinkedIn' });

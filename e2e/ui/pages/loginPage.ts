@@ -35,10 +35,10 @@ export class LoginPage {
   }
 
   async checkLoggedIn(): Promise<boolean> {
-    if (await this.homePageTitle.innerText() === '  MyNotes') {
-      return true;
-    } 
-    return false;
+    // Wait for navigation to complete and home element to be visible
+    await this.homePageTitle.waitFor({ state: 'visible', timeout: 30000 });
+    const text = await this.homePageTitle.innerText();
+    return text.includes('MyNotes');
   }
 
   async checkInvalidCredentials(): Promise<boolean> {

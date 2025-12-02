@@ -12,36 +12,36 @@ type ApiFixtures = {
 export const test = base.extend<ApiFixtures>({
     apiContext: async ({ playwright }, use) => {
         // Read env variables
-        const baseAPIUrl = process.env.BASE_API_URL || process.env.API_URL;
+        const apiUrl = process.env.API_URL;
         const email = process.env.EMAIL;
         const password = process.env.PASSWORD;
 
-        console.log(`Using API URL: ${baseAPIUrl}`);
+        if (!apiUrl || !email || !password) {
+            throw new Error('Missing required environment variables: API_URL, EMAIL, PASSWORD');
+        }
+        
+        console.log(`Using API URL: ${apiUrl}`);
         console.log(`Using email: ${email}`);
 
-        if (!baseAPIUrl || !email || !password) {
-            throw new Error('Missing required environment variables: BASE_API_URL/API_URL, EMAIL, PASSWORD');
-        }
-
         // Set the base URL for all API functions
-        notesApi.setApiBaseUrl(baseAPIUrl);
+        notesApi.setApiBaseUrl(apiUrl);
 
         // First create context without auth for login
         const loginContext = await playwright.request.newContext({
-            baseURL: baseAPIUrl,
+            baseURL: apiUrl,
             extraHTTPHeaders: {
                 Accept: 'application/json',
             },
         });
 
         // Login to get the auth token
-        const loginResponse = await notesApi.login(loginContext, email, password, baseAPIUrl);
+        const loginResponse = await notesApi.login(loginContext, email, password, apiUrl);
         const authToken = loginResponse.data.token;
         console.log(`Logged in successfully, token obtained`);
 
         // Create authenticated API context
         const apiContext = await playwright.request.newContext({
-            baseURL: baseAPIUrl,
+            baseURL: apiUrl,
             extraHTTPHeaders: {
                 'x-auth-token': authToken,
                 Accept: 'application/json',

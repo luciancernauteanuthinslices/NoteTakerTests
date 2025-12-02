@@ -226,12 +226,7 @@ def main():
     env_vars = load_env()
     
     # Get configuration (env file takes precedence, then system env)
-    base_url = (
-        env_vars.get("BASE_API_URL") or 
-        env_vars.get("API_URL") or 
-        os.getenv("BASE_API_URL") or 
-        os.getenv("API_URL")
-    )
+    base_url = env_vars.get("API_URL") or os.getenv("API_URL")
     email = env_vars.get("EMAIL") or os.getenv("EMAIL")
     password = env_vars.get("PASSWORD") or os.getenv("PASSWORD")
     
@@ -254,7 +249,7 @@ def main():
     # Validate required config
     errors = []
     if not base_url:
-        errors.append("BASE_API_URL or API_URL not set")
+        errors.append("API_URL not set")
     if not email:
         errors.append("EMAIL not set")
     if not password:

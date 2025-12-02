@@ -12,11 +12,8 @@ jobs:
     env:
       APP_URL: https://practice.expandtesting.com/notes/app
       API_URL: https://practice.expandtesting.com/notes/api
-      BASE_API_URL: https://practice.expandtesting.com/notes/api
       ENV: local
-      # Secrets (configure in GitHub → Settings → Secrets → Actions)
-      TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
-      TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+      # Admin credentials for admin-specific tests (configure in GitHub → Settings → Secrets → Actions)
       ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
       ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
 
@@ -35,15 +32,13 @@ jobs:
           cat << EOF > .env
           APP_URL=${APP_URL}
           API_URL=${API_URL}
-          BASE_API_URL=${BASE_API_URL}
           ENV=${ENV}
-          EMAIL=${TEST_EMAIL}
-          PASSWORD=${TEST_PASSWORD}
           ADMIN_EMAIL=${ADMIN_EMAIL}
           ADMIN_PASSWORD=${ADMIN_PASSWORD}
           BUILD_NUMBER=${{ github.run_number }}
           GITHUB_SHA=${{ github.sha }}
           EOF
+          echo "📋 Initial .env created (EMAIL/PASSWORD will be set by globalSetup after registration)"
 
       - name: Install dependencies
         working-directory: e2e
@@ -53,6 +48,11 @@ jobs:
         working-directory: e2e
         run: npx playwright install --with-deps
 
+      # Playwright's globalSetup will:
+      # 1. Register a new user with Faker-generated credentials
+      # 2. Update .env with the new EMAIL and PASSWORD
+      # 3. Login and save storage state
+      # This ensures each CI run uses a fresh, isolated user
       - name: Run Playwright tests (with Allure)
         working-directory: e2e
         run: npx playwright test
@@ -95,6 +95,8 @@ jobs:
         working-directory: e2e/schemathesis
         run: pip install -r requirements.txt
 
+      # Schemathesis reads from .env which now contains the dynamically
+      # registered user's credentials (set by Playwright's globalSetup)
       - name: Run Schemathesis API tests
         working-directory: e2e/schemathesis
         run: python run_schemathesis.py

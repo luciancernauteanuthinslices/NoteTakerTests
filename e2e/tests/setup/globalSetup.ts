@@ -2,45 +2,206 @@ import { FullConfig, chromium } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 import { LoginPage } from '../../ui/pages/loginPage';
+import { RegistrationPage } from '../../ui/pages/registrationPage';
+import { generateRegistrationData, GeneratedUser } from '../../data/userGenerator';
 import uiPages from '../../ui/utils/uiPages';
 
-async function loginAndSaveState(baseURL: string, email: string, password: string, statePath: string): Promise<void> {
-  const browser = await chromium.launch({ headless: true, timeout: 10000 });
+const E2E_ROOT = path.resolve(__dirname, '../../');
+const ENV_FILE_PATH = path.join(E2E_ROOT, '.env');
+
+/**
+ * Updates the .env file with new user credentials.
+ * Preserves other environment variables.
+ */
+function updateEnvFile(email: string, password: string): void {
+  let envContent = '';
+  
+  if (fs.existsSync(ENV_FILE_PATH)) {
+    envContent = fs.readFileSync(ENV_FILE_PATH, 'utf-8');
+  }
+  
+  // Parse existing env vars
+  const envLines = envContent.split('\n');
+  const envMap = new Map<string, string>();
+  
+  for (const line of envLines) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith('#') && trimmed.includes('=')) {
+      const [key, ...valueParts] = trimmed.split('=');
+      envMap.set(key.trim(), valueParts.join('=').trim());
+    }
+  }
+  
+  // Update EMAIL and PASSWORD
+  envMap.set('EMAIL', email);
+  envMap.set('PASSWORD', password);
+  
+  // Rebuild .env content
+  const newEnvContent = Array.from(envMap.entries())
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+  
+  fs.writeFileSync(ENV_FILE_PATH, newEnvContent + '\n');
+  
+  // Also update process.env for current run
+  process.env.EMAIL = email;
+  process.env.PASSWORD = password;
+  
+  console.log(`✅ Updated .env with new user: ${email}`);
+}
+
+/**
+ * Registers a new user via the UI.
+ */
+async function registerNewUser(
+  baseURL: string,
+  user: GeneratedUser & { confirmPassword: string }
+): Promise<void> {
+  const browser = await chromium.launch({ headless: true, timeout: 30000 });
+  const page = await browser.newPage();
+  const registrationPage = new RegistrationPage(page);
+
+  console.log(`📝 Registering new user: ${user.email}`);
+  
+  await page.goto(baseURL + uiPages.registerPage);
+  
+  await registrationPage.registerNewUser(
+    user.email,
+    user.name,
+    user.password,
+    user.confirmPassword
+  );
+  
+  // Wait for registration to complete - look for success message or redirect
+  // The success message contains "User account created successfully"
+  const successMessage = page.locator('text=User account created successfully');
+  const errorMessage = page.locator('[data-testid="alert-message"]');
+  
+  // Wait for either redirect to login OR success message (longer timeout for slow API)
+  try {
+    await Promise.race([
+      page.waitForURL('**/login**', { timeout: 30000 }),
+      successMessage.waitFor({ state: 'visible', timeout: 30000 }),
+      errorMessage.waitFor({ state: 'visible', timeout: 30000 })
+    ]);
+  } catch {
+    console.log(`⚠️  Timeout waiting for registration response`);
+    await page.screenshot({ path: 'debug-registration.png' });
+    console.log(`📸 Screenshot saved to debug-registration.png`);
+  }
+  
+  // Check current state
+  const currentUrl = page.url();
+  console.log(`📍 URL after registration: ${currentUrl}`);
+  
+  // Check for success
+  if (await successMessage.isVisible({ timeout: 2000 }).catch(() => false)) {
+    console.log(`✅ Registration success message detected`);
+  } else if (await errorMessage.isVisible({ timeout: 2000 }).catch(() => false)) {
+    const alertText = await errorMessage.innerText();
+    console.log(`📋 Alert message: ${alertText}`);
+    
+    // Check if it's an error
+    if (alertText.toLowerCase().includes('error') || alertText.includes('already') || alertText.toLowerCase().includes('invalid')) {
+      await browser.close();
+      throw new Error(`Registration failed: ${alertText}`);
+    }
+  } else if (currentUrl.includes('/register')) {
+    await page.screenshot({ path: 'debug-registration.png' });
+    await browser.close();
+    throw new Error('Registration did not complete - no success or error message found');
+  }
+  
+  await browser.close();
+  console.log(`✅ User registered successfully: ${user.email}`);
+}
+
+/**
+ * Logs in and saves storage state.
+ */
+async function loginAndSaveState(
+  baseURL: string,
+  email: string,
+  password: string,
+  statePath: string
+): Promise<void> {
+  const browser = await chromium.launch({ headless: true, timeout: 30000 });
   const page = await browser.newPage();
   const loginPage = new LoginPage(page);
 
+  console.log(`🔐 Logging in as: ${email}`);
+  
   await page.goto(baseURL + uiPages.loginPage);
   await loginPage.doLogin(email, password);
+  
+  // Debug: check current URL and any error messages
+  await page.waitForTimeout(2000); // Give page time to respond
+  console.log(`📍 URL after login attempt: ${page.url()}`);
+  
+  // Check for error message
+  const alertMessage = page.locator('[data-testid="alert-message"]');
+  if (await alertMessage.isVisible({ timeout: 3000 }).catch(() => false)) {
+    const alertText = await alertMessage.innerText();
+    console.log(`⚠️  Alert message: ${alertText}`);
+    if (alertText.includes('Incorrect') || alertText.includes('Invalid')) {
+      throw new Error(`Login failed: ${alertText}`);
+    }
+  }
+  
   await loginPage.checkLoggedIn();
   await page.context().storageState({ path: statePath });
   await browser.close();
+  
+  console.log(`✅ Storage state saved to: ${statePath}`);
 }
 
 async function globalSetup(config: FullConfig): Promise<void> {
   const { baseURL, storageState } = config.projects[0].use;
-  const e2eRoot = path.resolve(__dirname, '../../');
-  const authDir = path.join(e2eRoot, 'data', 'auth');
+  const authDir = path.join(E2E_ROOT, 'data', 'auth');
   fs.mkdirSync(authDir, { recursive: true });
 
-  const email = process.env.EMAIL!;
-  const password = process.env.PASSWORD!;
-  const adminEmail = process.env.ADMIN_EMAIL ?? email;
-  const adminPassword = process.env.ADMIN_PASSWORD ?? password;
-  const userStatePath = path.join(authDir, 'user.json');
-  const adminStatePath = path.join(authDir, 'admin.json');
+  console.log('\n' + '='.repeat(60));
+  console.log('🚀 Global Setup: Creating fresh user for test run');
+  console.log('='.repeat(60) + '\n');
 
-  // Primary user storage (used by config `use.storageState`)
-  await loginAndSaveState(baseURL as string, email, password, storageState as string);
+  // Generate new user with Faker
+  const newUser = generateRegistrationData();
+  
+  // Register the new user
+  await registerNewUser(baseURL as string, newUser);
+  
+  // Update .env with new credentials
+  updateEnvFile(newUser.email, newUser.password);
+  
+  // Login and save storage state
+  await loginAndSaveState(
+    baseURL as string,
+    newUser.email,
+    newUser.password,
+    storageState as string
+  );
 
   // Copy primary state for the regular user fixture
+  const userStatePath = path.join(authDir, 'user.json');
   fs.copyFileSync(storageState as string, userStatePath);
 
-  // Create admin storage if distinct credentials are provided
-  if (adminEmail === email && adminPassword === password) {
-    fs.copyFileSync(storageState as string, adminStatePath);
-  } else {
+  // Handle admin user (use existing admin credentials from env, or fallback to new user)
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  const adminStatePath = path.join(authDir, 'admin.json');
+
+  if (adminEmail && adminPassword && adminEmail !== newUser.email) {
+    // Use existing admin credentials
     await loginAndSaveState(baseURL as string, adminEmail, adminPassword, adminStatePath);
+  } else {
+    // Use the new user as admin too
+    fs.copyFileSync(storageState as string, adminStatePath);
   }
+
+  console.log('\n' + '='.repeat(60));
+  console.log('✅ Global Setup Complete');
+  console.log(`   User: ${newUser.email}`);
+  console.log('='.repeat(60) + '\n');
 }
 
 export default globalSetup;
