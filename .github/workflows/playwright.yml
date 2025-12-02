@@ -14,6 +14,11 @@ jobs:
       API_URL: https://practice.expandtesting.com/notes/api
       BASE_API_URL: https://practice.expandtesting.com/notes/api
       ENV: local
+      # Secrets (configure in GitHub → Settings → Secrets → Actions)
+      TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+      TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
 
     steps:
       - name: Checkout
@@ -32,6 +37,10 @@ jobs:
           API_URL=${API_URL}
           BASE_API_URL=${BASE_API_URL}
           ENV=${ENV}
+          EMAIL=${TEST_EMAIL}
+          PASSWORD=${TEST_PASSWORD}
+          ADMIN_EMAIL=${ADMIN_EMAIL}
+          ADMIN_PASSWORD=${ADMIN_PASSWORD}
           BUILD_NUMBER=${{ github.run_number }}
           GITHUB_SHA=${{ github.sha }}
           EOF
