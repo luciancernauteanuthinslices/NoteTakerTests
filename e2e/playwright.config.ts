@@ -19,11 +19,10 @@ const envFile =
 
 dotenv.config({ path: path.resolve(__dirname, envFile) });
 
-const e2eRoot = __dirname;
-const dataDir = path.join(e2eRoot, 'data');
-const storageStatePath = path.join(dataDir, 'storageState.json');
-const allureResultsDir = path.join(e2eRoot, 'allure-results');
-const testResultsDir = path.join(e2eRoot, 'test-results');
+// Use simple relative paths - works reliably in both local and CI
+const allureResultsDir = 'allure-results';
+const testResultsDir = 'test-results';
+const storageStatePath = path.join('data', 'storageState.json');
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -42,11 +41,11 @@ export default defineConfig({
       detail: true,
       suiteTitle: false,
       environmentInfo: {
-        appEnv: process.env.ENV,
-        appUrl: process.env.APP_URL,
-        buildNumber: process.env.BUILD_NUMBER,
-        commit: process.env.GITHUB_SHA,
-        node_version: process.version,
+        appEnv: process.env.ENV ?? 'local',
+        appUrl: process.env.APP_URL ?? '',
+        buildNumber: process.env.BUILD_NUMBER ?? 'local-run',
+        commit: process.env.GITHUB_SHA ?? 'local',
+        node_version: process.version ?? 'unknown',
       },
     }]
 ],
