@@ -1,32 +1,28 @@
 name: Playwright Tests
+
 on:
   push:
     branches: [ main, master, features/allure ]
   pull_request:
     branches: [ main, master, features/allure ]
+
 jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      # non‑secret config
       APP_URL: https://practice.expandtesting.com/notes/app
       API_URL: https://practice.expandtesting.com/notes/api
       BASE_API_URL: https://practice.expandtesting.com/notes/api
       ENV: local
 
-      # secrets (from GitHub → Settings → Secrets → Actions)
-      TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
-      TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
-      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
-      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-      BUILD_NUMBER: ${{ github.run_number }}
-      GITHUB_SHA: ${{ github.sha }}
-
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: 20
 
       - name: Generate .env for Playwright
         working-directory: e2e
@@ -35,11 +31,9 @@ jobs:
           APP_URL=${APP_URL}
           API_URL=${API_URL}
           BASE_API_URL=${BASE_API_URL}
-          EMAIL=${TEST_EMAIL}
-          PASSWORD=${TEST_PASSWORD}
-          ADMIN_EMAIL=${ADMIN_EMAIL}
-          ADMIN_PASSWORD=${ADMIN_PASSWORD}
           ENV=${ENV}
+          BUILD_NUMBER=${{ github.run_number }}
+          GITHUB_SHA=${{ github.sha }}
           EOF
 
       - name: Install dependencies
@@ -50,33 +44,40 @@ jobs:
         working-directory: e2e
         run: npx playwright install --with-deps
 
-      - name: Run Playwright tests with Allure
+      - name: Run Playwright tests (with Allure)
         working-directory: e2e
         run: npx playwright test
         continue-on-error: true
 
-      - name: Generate Allure HTML
+      # 🔍 DEBUG: make sure allure-results actually has data
+      - name: Debug allure-results content
+        if: always()
+        working-directory: e2e
+        run: |
+          echo "=== e2e directory ==="
+          ls -R .
+          echo "=== allure-results ==="
+          ls -R allure-results || echo "NO allure-results DIR OR IT'S EMPTY"
+
+      - name: Generate Allure HTML report
         if: always()
         working-directory: e2e
         run: |
           npm install -g allure-commandline
           allure generate allure-results --clean -o allure-report
 
-      - name: Upload Allure Report
+      - name: Upload Allure HTML report artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
-          path: |
-            e2e/allure-report
-            e2e/allure-results
-          include-hidden-files: false
+          path: e2e/allure-report
 
       - name: Add Allure Report link to summary
         if: always()
         run: |
           echo "## 📊 Allure Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Download the **allure-report** artifact from the [Actions run artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)." >> $GITHUB_STEP_SUMMARY
+          echo "Download the **allure-report** artifact from the Artifacts section of this run." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "To view: download, extract, and open \`index.html\` in your browser." >> $GITHUB_STEP_SUMMARY
