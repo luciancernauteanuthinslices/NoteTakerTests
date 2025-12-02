@@ -66,8 +66,11 @@ jobs:
         if: always()
         working-directory: e2e
         run: |
-          npm install -g allure-commandline
-          allure generate allure-results --clean -o allure-report
+          echo "=== Allure results files ==="
+          ls -la allure-results/ || echo "No allure-results directory"
+          npx allure generate allure-results --clean -o allure-report
+          echo "=== Allure report generated ==="
+          ls -la allure-report/
 
       - name: Upload Allure Report
         if: always()
@@ -83,4 +86,15 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Download the **allure-report** artifact from the [Actions run artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "To view: download, extract, and open \`index.html\` in your browser." >> $GITHUB_STEP_SUMMARY
+          echo "### How to view the report" >> $GITHUB_STEP_SUMMARY
+          echo "The Allure report **cannot** be opened by double-clicking \`index.html\` (CORS blocks it)." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Option 1:** Use Allure CLI" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "npx allure open allure-report" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Option 2:** Use any HTTP server" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "npx serve allure-report" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
