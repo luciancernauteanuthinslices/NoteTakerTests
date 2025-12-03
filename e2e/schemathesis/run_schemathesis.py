@@ -21,6 +21,7 @@ import sys
 import subprocess
 import requests
 from pathlib import Path
+from datetime import datetime
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONFIGURATION
@@ -33,8 +34,33 @@ PROJECT_ROOT = E2E_DIR.parent                  # NoteTaker/
 
 # Default file locations
 DEFAULT_OPENAPI_FILE = E2E_DIR / "openapi.json"
-RESULTS_DIR = SCRIPT_DIR / "allure-results"
+ALLURE_BASE_DIR = SCRIPT_DIR / "allure-results"
 REPORT_DIR = SCRIPT_DIR / "allure-report"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TIMESTAMPED RUN MANAGEMENT
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def generate_run_id() -> str:
+    """Generate a timestamped run ID for organizing results."""
+    now = datetime.now()
+    return f"run-{now.strftime('%Y%m%d-%H%M%S')}"
+
+
+def get_results_dir() -> Path:
+    """
+    Get the results directory for current run.
+    Uses ALLURE_RUN_ID env var for CI consistency, otherwise generates new.
+    """
+    run_id = os.getenv("ALLURE_RUN_ID") or generate_run_id()
+    results_dir = ALLURE_BASE_DIR / run_id
+    
+    # Store current run ID for summarizer scripts
+    current_run_file = ALLURE_BASE_DIR / ".current-run"
+    ALLURE_BASE_DIR.mkdir(parents=True, exist_ok=True)
+    current_run_file.write_text(run_id)
+    
+    return results_dir
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -137,7 +163,7 @@ def run_schemathesis(
     openapi_file: Path,
     base_url: str,
     auth_token: str,
-    results_dir: Path = RESULTS_DIR,
+    results_dir: Path = None,
     max_examples: int = 50,
     extra_args: list = None
 ) -> int:
@@ -155,10 +181,11 @@ def run_schemathesis(
     Returns:
         Exit code from Schemathesis
     """
-    # Clean previous results
-    if results_dir.exists():
-        import shutil
-        shutil.rmtree(results_dir)
+    # Use provided results_dir or get timestamped one
+    if results_dir is None:
+        results_dir = get_results_dir()
+    
+    # Create fresh results directory (don't delete - each run has unique folder)
     results_dir.mkdir(parents=True, exist_ok=True)
     
     # Build Schemathesis command
@@ -196,7 +223,7 @@ def run_schemathesis(
     return result.returncode
 
 
-def list_results(results_dir: Path = RESULTS_DIR):
+def list_results(results_dir: Path = None):
     """List generated result files."""
     if not results_dir.exists():
         print(f"\n⚠️  No results directory found at {results_dir}")
@@ -264,11 +291,14 @@ def main():
         print("\nPlease set these in e2e/.env or as environment variables.")
         sys.exit(1)
     
+    # Get timestamped results directory
+    results_dir = get_results_dir()
+    
     print(f"\n📋 Configuration:")
     print(f"   Base URL:    {base_url}")
     print(f"   Email:       {email}")
     print(f"   OpenAPI:     {openapi_file}")
-    print(f"   Results Dir: {RESULTS_DIR}")
+    print(f"   Results Dir: {results_dir}")
     
     # Authenticate
     token = get_auth_token(base_url, email, password)
@@ -278,12 +308,12 @@ def main():
         openapi_file=openapi_file,
         base_url=base_url,
         auth_token=token,
-        results_dir=RESULTS_DIR,
+        results_dir=results_dir,
         max_examples=max_examples
     )
     
     # Show results
-    list_results()
+    list_results(results_dir)
     
     # Summary
     print("\n" + "=" * 70)
@@ -295,9 +325,9 @@ def main():
     print("=" * 70)
     
     print(f"\n💡 Next steps:")
-    print(f"   Generate Allure report: allure generate {RESULTS_DIR} -o {REPORT_DIR} --clean")
+    print(f"   Generate Allure report: allure generate {results_dir} -o {REPORT_DIR} --clean")
     print(f"   View Allure report:     allure open {REPORT_DIR}")
-    print(f"   Or serve directly:      allure serve {RESULTS_DIR}")
+    print(f"   Or serve directly:      allure serve {results_dir}")
     
     return 0
 

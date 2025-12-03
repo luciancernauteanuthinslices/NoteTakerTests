@@ -27,8 +27,54 @@ MODEL_PATH = "/Users/lucian.cernauteanuthinslices.com/Documents/LLM Models/Qwen2
 
 # Default paths (relative to this script)
 SCRIPT_DIR = Path(__file__).parent.resolve()
-DEFAULT_RESULTS_DIR = SCRIPT_DIR.parent / "schemathesis" / "allure-results"
+ALLURE_BASE_DIR = SCRIPT_DIR.parent / "schemathesis" / "allure-results"
 DEFAULT_OPENAPI_PATH = SCRIPT_DIR.parent / "openapi.json"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Timestamped Run Detection
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def find_latest_run(base_dir: Path) -> Path:
+    """
+    Find the latest run folder in the allure-results directory.
+    
+    Checks for:
+    1. .current-run file (written by test runner)
+    2. Latest run-* folder by name (timestamp-based sorting)
+    3. Falls back to base_dir if no run folders exist
+    """
+    if not base_dir.exists():
+        return base_dir
+    
+    # Check for .current-run marker file
+    current_run_file = base_dir / ".current-run"
+    if current_run_file.exists():
+        run_id = current_run_file.read_text().strip()
+        run_dir = base_dir / run_id
+        if run_dir.exists():
+            return run_dir
+    
+    # Find all run-* directories and sort by name (timestamp order)
+    run_dirs = sorted(
+        [d for d in base_dir.iterdir() if d.is_dir() and d.name.startswith("run-")],
+        reverse=True  # Latest first
+    )
+    
+    if run_dirs:
+        return run_dirs[0]
+    
+    # Fallback: check if results are directly in base_dir (legacy format)
+    if list(base_dir.glob("junit*.xml")):
+        return base_dir
+    
+    return base_dir
+
+
+def get_default_results_dir() -> Path:
+    """Get the default results directory (latest run)."""
+    return find_latest_run(ALLURE_BASE_DIR)
+
 
 # LLM settings
 N_CTX = 8200  # Context window (increase if you have more failures)
@@ -481,8 +527,8 @@ Examples:
     parser.add_argument(
         "--results", "-r",
         type=Path,
-        default=DEFAULT_RESULTS_DIR,
-        help=f"Path to allure-results directory (default: {DEFAULT_RESULTS_DIR})"
+        default=None,
+        help=f"Path to allure-results directory (default: latest run in {ALLURE_BASE_DIR})"
     )
     parser.add_argument(
         "--openapi", "-o",
@@ -507,6 +553,13 @@ Examples:
         args.results = args.legacy_results
     if args.legacy_openapi:
         args.openapi = args.legacy_openapi
+    
+    # Resolve results directory - find latest run if needed
+    if args.results is None:
+        args.results = get_default_results_dir()
+    elif args.results.exists() and args.results.is_dir():
+        # Check if this is a base directory with run-* subfolders
+        args.results = find_latest_run(args.results)
     
     return args
 

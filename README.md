@@ -122,10 +122,15 @@ e2e/
 │   ├── run_schemathesis.py           # Schemathesis runner
 │   ├── requirements.txt              # Python dependencies
 │   ├── venv/                         # Python virtual environment
+│   ├── allure-results/               # Schemathesis results (timestamped)
+│   │   ├── .current-run              # Current run ID marker
+│   │   └── run-YYYYMMDD-HHMMSS/      # Timestamped run folders
 │   └── SCHEMATHESIS_GUIDE.md         # Schemathesis documentation
 │
 ├── 📁 extensions/                    # Browser extensions (e.g., ad blocker)
-├── 📁 allure-results/                # Allure report data
+├── 📁 allure-results/                # Playwright results (timestamped)
+│   ├── .current-run                  # Current run ID marker
+│   └── run-YYYYMMDD-HHMMSS/          # Timestamped run folders
 ├── 📁 playwright-report/             # HTML report output
 ├── 📁 test-results/                  # Test artifacts (screenshots, traces)
 │
@@ -702,13 +707,31 @@ npx playwright show-report
 
 ### Allure Report
 
+Test results are organized in **timestamped folders** for better history tracking:
+
+```
+allure-results/
+├── .current-run                    # Points to latest run
+├── run-20251203-143022/            # Run from Dec 3, 2:30 PM
+│   ├── *-result.json               # Test results
+│   └── *-attachment.*              # Screenshots, etc.
+├── run-20251203-150815/            # Run from Dec 3, 3:08 PM
+└── run-20251203-175645/            # Latest run
+```
+
 ```bash
-# Generate Allure report
+# Generate Allure report from latest run
+LATEST_RUN=$(cat allure-results/.current-run)
+npx allure generate "allure-results/$LATEST_RUN" --clean -o allure-report
+
+# Or generate from all results
 npx allure generate allure-results --clean
 
 # Open Allure report
 npx allure open
 ```
+
+The summarizer scripts automatically detect the latest run folder.
 
 ### Test Artifacts
 

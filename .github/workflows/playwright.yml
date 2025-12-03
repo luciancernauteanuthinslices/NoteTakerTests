@@ -16,6 +16,8 @@ jobs:
       # Admin credentials for admin-specific tests (configure in GitHub → Settings → Secrets → Actions)
       ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
       ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      # Shared run ID for timestamped allure results (set in first step)
+      ALLURE_RUN_ID: run-${{ github.run_number }}-${{ github.run_attempt }}
 
     steps:
       - name: Checkout
@@ -63,17 +65,24 @@ jobs:
         if: always()
         working-directory: e2e
         run: |
-          echo "=== e2e directory ==="
-          ls -R .
-          echo "=== allure-results ==="
-          ls -R allure-results || echo "NO allure-results DIR OR IT'S EMPTY"
+          echo "=== ALLURE_RUN_ID: $ALLURE_RUN_ID ==="
+          echo "=== allure-results structure ==="
+          ls -la allure-results/ || echo "NO allure-results DIR"
+          ls -la allure-results/$ALLURE_RUN_ID/ 2>/dev/null || echo "No timestamped run folder yet"
 
       - name: Generate Allure HTML report
         if: always()
         working-directory: e2e
         run: |
           npm install -g allure-commandline
-          allure generate allure-results --clean -o allure-report
+          # Find the latest run folder and generate report from it
+          RESULTS_DIR="allure-results/$ALLURE_RUN_ID"
+          if [ -d "$RESULTS_DIR" ]; then
+            allure generate "$RESULTS_DIR" --clean -o allure-report
+          else
+            echo "No results in $RESULTS_DIR, checking for any results..."
+            allure generate allure-results --clean -o allure-report || echo "No allure results to generate"
+          fi
 
       - name: Upload Allure HTML report artifact
         if: always()
@@ -105,7 +114,14 @@ jobs:
       - name: Generate Schemathesis Allure HTML report
         if: always()
         run: |
-          allure generate e2e/schemathesis/allure-results --clean -o e2e/schemathesis/allure-report || echo "No Schemathesis results to generate"
+          # Find the latest run folder and generate report from it
+          RESULTS_DIR="e2e/schemathesis/allure-results/$ALLURE_RUN_ID"
+          if [ -d "$RESULTS_DIR" ]; then
+            allure generate "$RESULTS_DIR" --clean -o e2e/schemathesis/allure-report
+          else
+            echo "No results in $RESULTS_DIR, checking for any results..."
+            allure generate e2e/schemathesis/allure-results --clean -o e2e/schemathesis/allure-report || echo "No Schemathesis results to generate"
+          fi
 
       - name: Upload Schemathesis Allure report artifact
         if: always()

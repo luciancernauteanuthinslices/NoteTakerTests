@@ -1,12 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
 
-
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
  */
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 
 const envName = process.env.ENV ?? 'local';
 
@@ -19,10 +19,32 @@ const envFile =
 
 dotenv.config({ path: path.resolve(__dirname, envFile) });
 
-// Use simple relative paths - works reliably in both local and CI
-const allureResultsDir = 'allure-results';
+// Generate timestamped run ID for allure results grouping
+const generateRunId = () => {
+  const now = new Date();
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `run-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+};
+
+// Use RUN_ID from env (for CI consistency) or generate new one
+const runId = process.env.ALLURE_RUN_ID || generateRunId();
+
+// Store current run ID in a file for summarizer scripts to find
+const runIdFile = path.join(__dirname, 'allure-results', '.current-run');
+
+// Allure results organized by run timestamp
+const allureResultsDir = path.join('allure-results', runId);
 const testResultsDir = 'test-results';
 const storageStatePath = path.join('data', 'storageState.json');
+
+// Ensure allure-results base directory exists and write current run ID
+const allureBaseDir = path.join(__dirname, 'allure-results');
+if (!fs.existsSync(allureBaseDir)) {
+  fs.mkdirSync(allureBaseDir, { recursive: true });
+}
+fs.writeFileSync(runIdFile, runId);
+
+console.log(`📊 Allure results will be saved to: ${allureResultsDir}`);
 
 /**
  * See https://playwright.dev/docs/test-configuration.

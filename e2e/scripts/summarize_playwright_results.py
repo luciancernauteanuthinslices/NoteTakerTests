@@ -25,7 +25,52 @@ MODEL_PATH = "/Users/lucian.cernauteanuthinslices.com/Documents/LLM Models/Qwen2
 
 # Default paths (relative to this script)
 SCRIPT_DIR = Path(__file__).parent.resolve()
-DEFAULT_RESULTS_DIR = SCRIPT_DIR.parent / "allure-results"
+ALLURE_BASE_DIR = SCRIPT_DIR.parent / "allure-results"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Timestamped Run Detection
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def find_latest_run(base_dir: Path) -> Path:
+    """
+    Find the latest run folder in the allure-results directory.
+    
+    Checks for:
+    1. .current-run file (written by test runner)
+    2. Latest run-* folder by name (timestamp-based sorting)
+    3. Falls back to base_dir if no run folders exist
+    """
+    if not base_dir.exists():
+        return base_dir
+    
+    # Check for .current-run marker file
+    current_run_file = base_dir / ".current-run"
+    if current_run_file.exists():
+        run_id = current_run_file.read_text().strip()
+        run_dir = base_dir / run_id
+        if run_dir.exists():
+            return run_dir
+    
+    # Find all run-* directories and sort by name (timestamp order)
+    run_dirs = sorted(
+        [d for d in base_dir.iterdir() if d.is_dir() and d.name.startswith("run-")],
+        reverse=True  # Latest first
+    )
+    
+    if run_dirs:
+        return run_dirs[0]
+    
+    # Fallback: check if results are directly in base_dir (legacy format)
+    if list(base_dir.glob("*-result.json")):
+        return base_dir
+    
+    return base_dir
+
+
+def get_default_results_dir() -> Path:
+    """Get the default results directory (latest run)."""
+    return find_latest_run(ALLURE_BASE_DIR)
 
 # LLM settings - tuned for concise, non-repetitive output
 N_CTX = 4096          # Context window (smaller for Playwright - less data)
@@ -128,21 +173,6 @@ def parse_result_file(json_path: Path) -> dict:
     }
 
 
-def parse_environment(results_dir: Path) -> dict:
-    """Parse environment.properties file if it exists."""
-    env_file = results_dir / "environment.properties"
-    env = {}
-    
-    if env_file.exists():
-        with open(env_file, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if line and '=' in line:
-                    key, value = line.split('=', 1)
-                    env[key.strip()] = value.strip()
-    
-    return env
-
 
 def aggregate_results(results: list[dict]) -> dict:
     """
@@ -160,7 +190,6 @@ def aggregate_results(results: list[dict]) -> dict:
             "avg_duration_ms": int,
             "suites": {suite_name: {"passed": N, "failed": N, ...}},
             "failures": [{"name": ..., "error": ..., "file": ...}],
-            "slowest": [{"name": ..., "duration_ms": ...}],
         }
     """
     stats = {
@@ -173,7 +202,6 @@ def aggregate_results(results: list[dict]) -> dict:
         "total_duration_ms": 0,
         "suites": {},
         "failures": [],
-        "slowest": [],
     }
     
     for r in results:
@@ -201,13 +229,6 @@ def aggregate_results(results: list[dict]) -> dict:
     stats["pass_rate"] = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
     stats["avg_duration_ms"] = stats["total_duration_ms"] // stats["total"] if stats["total"] > 0 else 0
     
-    # Find slowest tests
-    sorted_by_duration = sorted(results, key=lambda x: x["duration_ms"], reverse=True)
-    stats["slowest"] = [
-        {"name": r["name"], "duration_ms": r["duration_ms"], "file": r["file"]}
-        for r in sorted_by_duration[:5]
-    ]
-    
     return stats
 
 
@@ -227,7 +248,7 @@ def format_duration(ms: int) -> str:
         return f"{minutes}m {seconds:.0f}s"
 
 
-def generate_summary_report(stats: dict, env: dict) -> str:
+def generate_summary_report(stats: dict) -> str:
     """Generate the main summary section."""
     lines = []
     
@@ -268,18 +289,6 @@ def generate_summary_report(stats: dict, env: dict) -> str:
     lines.append(f"- **Average Test Duration:** {format_duration(stats['avg_duration_ms'])}")
     lines.append(f"- **Pass Rate:** {stats['pass_rate']:.1f}%")
     lines.append("")
-    
-    # Environment info
-    if env:
-        lines.append("### 🌍 Environment")
-        lines.append("")
-        lines.append("| Property | Value |")
-        lines.append("|----------|-------|")
-        for key, value in env.items():
-            # Truncate long values
-            display_value = value[:50] + "..." if len(value) > 50 else value
-            lines.append(f"| {key} | `{display_value}` |")
-        lines.append("")
     
     return "\n".join(lines)
 
@@ -326,25 +335,6 @@ def generate_suites_section(suites: dict) -> str:
             f"| {suite} | {counts.get('passed', 0)} | {counts.get('failed', 0)} | "
             f"{counts.get('broken', 0)} | {counts.get('skipped', 0)} |"
         )
-    
-    lines.append("")
-    return "\n".join(lines)
-
-
-def generate_slowest_section(slowest: list[dict]) -> str:
-    """Generate the slowest tests section."""
-    if not slowest:
-        return ""
-    
-    lines = []
-    lines.append("### 🐢 Slowest Tests")
-    lines.append("")
-    lines.append("| Test | Duration | File |")
-    lines.append("|------|----------|------|")
-    
-    for t in slowest:
-        duration = format_duration(t["duration_ms"])
-        lines.append(f"| {t['name']} | {duration} | `{t['file']}` |")
     
     lines.append("")
     return "\n".join(lines)
@@ -535,8 +525,8 @@ Examples:
     parser.add_argument(
         "--results", "-r",
         type=Path,
-        default=DEFAULT_RESULTS_DIR,
-        help=f"Path to allure-results directory (default: {DEFAULT_RESULTS_DIR})"
+        default=None,
+        help=f"Path to allure-results directory (default: latest run in {ALLURE_BASE_DIR})"
     )
     parser.add_argument(
         "--no-llm",
@@ -557,10 +547,17 @@ Examples:
     if args.legacy_results:
         args.results = args.legacy_results
     
+    # Resolve results directory - find latest run if needed
+    if args.results is None:
+        args.results = get_default_results_dir()
+    elif args.results.exists() and args.results.is_dir():
+        # Check if this is a base directory with run-* subfolders
+        args.results = find_latest_run(args.results)
+    
     return args
 
 
-def generate_markdown_report(stats: dict, env: dict, include_llm: bool = False, compact: bool = False) -> str:
+def generate_markdown_report(stats: dict, include_llm: bool = False, compact: bool = False) -> str:
     """Generate a complete markdown report."""
     lines = []
     
@@ -569,7 +566,7 @@ def generate_markdown_report(stats: dict, env: dict, include_llm: bool = False, 
     lines.append("")
     
     # Main summary
-    lines.append(generate_summary_report(stats, env))
+    lines.append(generate_summary_report(stats))
     
     # Failures (always show if present)
     if stats["failures"]:
@@ -578,7 +575,6 @@ def generate_markdown_report(stats: dict, env: dict, include_llm: bool = False, 
     # Suites breakdown (skip in compact mode)
     if not compact:
         lines.append(generate_suites_section(stats["suites"]))
-        lines.append(generate_slowest_section(stats["slowest"]))
     
     # Recommendations
     lines.append("### 💡 Recommendations")
@@ -639,9 +635,6 @@ def main():
             print("No valid results to summarize.", file=sys.stderr)
         sys.exit(0)
     
-    # Parse environment
-    env = parse_environment(args.results)
-    
     # Aggregate statistics
     stats = aggregate_results(results)
     
@@ -650,7 +643,7 @@ def main():
     
     # Generate report
     include_llm = not args.ci and not args.no_llm
-    report = generate_markdown_report(stats, env, include_llm, args.compact)
+    report = generate_markdown_report(stats, include_llm, args.compact)
     
     if args.ci:
         # CI mode: just output clean markdown

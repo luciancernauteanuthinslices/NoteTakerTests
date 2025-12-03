@@ -31,6 +31,8 @@ This script parses **Allure JSON results** from Playwright test runs and generat
 - ✅ **Actionable recommendations** based on results
 - ✅ **AI-powered insights** using a local LLM (optional)
 
+> **Note:** Environment info and slowest tests are available in the full Allure HTML report.
+
 ---
 
 ## Features
@@ -41,10 +43,8 @@ This script parses **Allure JSON results** from Playwright test runs and generat
 | ⏱️ **Performance Metrics** | Total and average test duration |
 | ❌ **Failure Details** | Test names, files, and error messages |
 | 📦 **Suite Breakdown** | Results grouped by test suite |
-| 🐢 **Slowest Tests** | Top 5 slowest tests for optimization |
 | 💡 **Recommendations** | Rule-based actionable suggestions |
 | 🤖 **AI Insights** | LLM-generated analysis (optional) |
-| 🌍 **Environment Info** | Build number, commit, app URL |
 
 ### Status Icons
 
@@ -98,11 +98,33 @@ This script parses **Allure JSON results** from Playwright test runs and generat
 
 ### Data Flow
 
-1. **Find Files**: Locate all `*-result.json` files in the results directory
-2. **Parse JSON**: Extract test name, status, duration, steps, and errors
-3. **Aggregate**: Calculate statistics, group by suite, find slowest tests
-4. **Generate**: Create markdown with tables, lists, and recommendations
-5. **Output**: Print to stdout (for CI) or decorated console (for local)
+1. **Find Latest Run**: Check `.current-run` marker or find newest `run-*` folder
+2. **Find Files**: Locate all `*-result.json` files in the results directory
+3. **Parse JSON**: Extract test name, status, duration, steps, and errors
+4. **Aggregate**: Calculate statistics and group by suite
+5. **Generate**: Create markdown with tables, lists, and recommendations
+6. **Output**: Print to stdout (for CI) or decorated console (for local)
+
+### Timestamped Results Organization
+
+Results are organized in timestamped folders for history tracking:
+
+```
+allure-results/
+├── .current-run                    # Contains: "run-20251203-175645"
+├── run-20251203-143022/            # Older run
+│   ├── abc123-result.json
+│   └── def456-attachment.txt
+├── run-20251203-150815/            # Another run
+└── run-20251203-175645/            # Latest run (matches .current-run)
+    ├── *-result.json
+    └── *-attachment.*
+```
+
+The script automatically detects the latest run by:
+1. Reading `.current-run` marker file (written by test runner)
+2. Falling back to the newest `run-*` folder by timestamp sorting
+3. Supporting legacy flat structure if no run folders exist
 
 ---
 
@@ -223,26 +245,11 @@ python summarize_playwright_results.py --results /path/to/allure-results
 - **Average Test Duration:** 5.0s
 - **Pass Rate:** 88.9%
 
-### 🌍 Environment
-
-| Property | Value |
-|----------|-------|
-| appEnv | `local` |
-| appUrl | `https://practice.expandtesting.com/notes/app` |
-| buildNumber | `local-run` |
-
 ### 📦 Test Suites
 
 | Suite | ✅ | ❌ | 💔 | ⏭️ |
 |-------|-----|-----|-----|-----|
 | chromium | 8 | 0 | 0 | 1 |
-
-### 🐢 Slowest Tests
-
-| Test | Duration | File |
-|------|----------|------|
-| Goes to profile page | 8.2s | `profile-with-dynamic-pom.spec.ts` |
-| Check logged in | 5.4s | `profile-with-dynamic-pom.spec.ts` |
 
 ### 💡 Recommendations
 
