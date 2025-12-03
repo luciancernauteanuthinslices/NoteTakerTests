@@ -25,6 +25,7 @@ A **production-ready** Playwright test automation framework with multi-environme
 - [📝 Writing Tests](#-writing-tests)
 - [🚀 Running Tests](#-running-tests)
 - [📊 Reporting](#-reporting)
+- [🔬 Schemathesis API Fuzz Testing](#-schemathesis-api-fuzz-testing)
 
 ---
 
@@ -335,6 +336,7 @@ projects: [
 - **File:** `tests/setup/globalSetup.ts`
 - **Storage:** `data/storageState.json`
 - **Best for:** Most test scenarios with single user
+ - **Behavior:** Registers a fresh user via the UI on each test run and updates `.env` with the new `EMAIL` / `PASSWORD` values.
 
 ```typescript
 // playwright.config.ts
@@ -345,6 +347,16 @@ export default defineConfig({
   },
 });
 ```
+
+When Playwright starts, `globalSetup` will:
+
+- Generate random registration data via `data/userGenerator.ts`.
+- Open the registration page and create a new account using `RegistrationPage`.
+- Persist the new credentials into `e2e/.env` (`EMAIL` and `PASSWORD`), preserving other environment variables.
+- Log in once with this user and save `data/storageState.json`.
+- Copy that state to `data/auth/user.json` and `data/auth/admin.json` (or reuse the same state if dedicated admin credentials are not provided).
+
+This ensures that every test run uses a clean user account and avoids data pollution between runs.
 
 ### Method 2: Auth Setup Project (Multi-Role)
 
@@ -745,6 +757,62 @@ const response = await executeRequest(apiContext, '/endpoint', 'post', { data })
 
 ---
 
-**Built with ❤️ using [Playwright](https://playwright.dev)**
+## 🔬 Schemathesis API Fuzz Testing
+
+This project includes **Schemathesis** for automated property-based API testing. Schemathesis generates test cases from your OpenAPI specification and validates that your API conforms to its contract.
+
+### Features
+
+- ✅ **Automatic test generation** from OpenAPI spec
+- ✅ **Authentication** via API token (`x-auth-token`)
+- ✅ **Allure reporting** (separate from Playwright reports)
+- ✅ **CI integration** with GitHub Actions
+
+### Quick Start
+
+```bash
+# Navigate to schemathesis folder (inside e2e)
+cd e2e/schemathesis
+
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate  # macOS/Linux
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run tests
+python run_schemathesis.py
+
+# View Allure report
+allure serve allure-results
+```
+
+Schemathesis reuses the same `e2e/.env` configuration used by Playwright.
+Make sure at least the following variables are set before running `run_schemathesis.py`:
+
+- `BASE_API_URL` – API base URL (for example, `https://practice.expandtesting.com/notes/api`).
+- `EMAIL` / `PASSWORD` – credentials for obtaining the `x-auth-token` used in API requests.
+
+For advanced configuration options and troubleshooting, see the dedicated **Schemathesis Guide** linked below.
+
+### CI Reports
+
+In GitHub Actions, Schemathesis produces a separate artifact:
+
+| Artifact | Description |
+|----------|-------------|
+| `allure-report` | Playwright E2E test results |
+| `schemathesis-allure-report` | Schemathesis API fuzz test results |
+
+### 📖 Full Documentation
+
+For complete setup instructions, configuration options, and troubleshooting, see:
+
+**[📚 Schemathesis Guide](./e2e/schemathesis/SCHEMATHESIS_GUIDE.md)**
+
+---
+
+**Built with ❤️ using [Playwright](https://playwright.dev) and [Schemathesis](https://schemathesis.io)**
 
 </div>

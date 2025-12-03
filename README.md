@@ -336,6 +336,7 @@ projects: [
 - **File:** `tests/setup/globalSetup.ts`
 - **Storage:** `data/storageState.json`
 - **Best for:** Most test scenarios with single user
+ - **Behavior:** Registers a fresh user via the UI on each test run and updates `.env` with the new `EMAIL` / `PASSWORD` values.
 
 ```typescript
 // playwright.config.ts
@@ -346,6 +347,16 @@ export default defineConfig({
   },
 });
 ```
+
+When Playwright starts, `globalSetup` will:
+
+- Generate random registration data via `data/userGenerator.ts`.
+- Open the registration page and create a new account using `RegistrationPage`.
+- Persist the new credentials into `e2e/.env` (`EMAIL` and `PASSWORD`), preserving other environment variables.
+- Log in once with this user and save `data/storageState.json`.
+- Copy that state to `data/auth/user.json` and `data/auth/admin.json` (or reuse the same state if dedicated admin credentials are not provided).
+
+This ensures that every test run uses a clean user account and avoids data pollution between runs.
 
 ### Method 2: Auth Setup Project (Multi-Role)
 
@@ -776,6 +787,14 @@ python run_schemathesis.py
 # View Allure report
 allure serve allure-results
 ```
+
+Schemathesis reuses the same `e2e/.env` configuration used by Playwright.
+Make sure at least the following variables are set before running `run_schemathesis.py`:
+
+- `BASE_API_URL` – API base URL (for example, `https://practice.expandtesting.com/notes/api`).
+- `EMAIL` / `PASSWORD` – credentials for obtaining the `x-auth-token` used in API requests.
+
+For advanced configuration options and troubleshooting, see the dedicated **Schemathesis Guide** linked below.
 
 ### CI Reports
 
