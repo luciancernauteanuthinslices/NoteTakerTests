@@ -138,9 +138,9 @@ The script reads configuration from the parent `e2e/.env` file:
 
 ```env
 # Required for Schemathesis
-BASE_API_URL=https://practice.expandtesting.com/notes/api
-EMAIL=your-email@example.com
-PASSWORD=your-password
+API_URL=https://practice.expandtesting.com/notes/api
+EMAIL=your-email@example.com        # In CI this is set dynamically by Playwright globalSetup
+PASSWORD=your-password              # In CI this is set dynamically by Playwright globalSetup
 
 # Optional
 OPENAPI_FILE=openapi.json              # Default: e2e/openapi.json
@@ -151,7 +151,7 @@ SCHEMATHESIS_MAX_EXAMPLES=50           # Max test cases per endpoint
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `BASE_API_URL` | ✅ | API base URL |
+| `API_URL` | ✅ | API base URL |
 | `EMAIL` | ✅ | Login email for authentication |
 | `PASSWORD` | ✅ | Login password |
 | `OPENAPI_FILE` | ❌ | Path to OpenAPI spec (default: `e2e/openapi.json`) |
@@ -372,6 +372,90 @@ schemathesis run openapi.json -u https://api.example.com \
   --dry-run
 ```
 
+#### How `run_schemathesis.py` gets the auth token
+
+The Python runner script performs these steps before it calls `schemathesis run`:
+
+- Reads `API_URL`, `EMAIL` and `PASSWORD` from the parent `e2e/.env` file (or from environment variables).
+- Builds the login URL: `${API_URL}/users/login`.
+- Sends a `POST` request with form data `email=<EMAIL>` and `password=<PASSWORD>`.
+- Expects a JSON response similar to:
+
+  ```json
+  {
+    "success": true,
+    "data": {
+      "token": "...x-auth-token value..."
+    }
+  }
+  ```
+
+- Extracts `data.token` and passes it to Schemathesis as the header `x-auth-token:<token>`.
+
+In other words, the script ends up running a command of this form (with the real token substituted):
+
+```bash
+schemathesis run ../e2e/openapi.json \
+  -u https://practice.expandtesting.com/notes/api \
+  -H "x-auth-token:<token-from-login-response>" \
+  --report junit --report-dir ./allure-results \
+  --checks all \
+  -n 50 \
+  --continue-on-failure
+```
+
+The script prints the exact Schemathesis CLI command it executes, so you can copy/paste and tweak it if you prefer to run Schemathesis directly.
+
+#### Full CLI example with token & JUnit report
+
+If you already have an `x-auth-token` (for example from `run_schemathesis.py` logs or a manual login request), you can invoke Schemathesis directly:
+
+```bash
+# 1. Export the token value
+TOKEN="paste-your-x-auth-token-here"
+
+# 2. Run Schemathesis with authentication and JUnit reporting
+schemathesis run ../e2e/openapi.json \
+  -u https://practice.expandtesting.com/notes/api \
+  -H "x-auth-token:${TOKEN}" \
+  --report junit \
+  --report-dir ./results \
+  --checks all \
+  -n 50 \
+  --continue-on-failure
+```
+
+Where:
+
+- `-u` sets the base URL for the API under test.
+- `-H "x-auth-token:..."` adds the authentication header using the token from the login response.
+- `--report junit --report-dir ./results` writes JUnit XML into the `./results` directory.
+- `--checks all` enables all built‑in contract checks.
+- `-n 50` limits the number of generated examples per operation.
+- `--continue-on-failure` keeps running even if some tests fail.
+
+#### Parallel / "sharded" execution with workers
+
+To spread the load across multiple processes (similar to test sharding), use the `--workers` option of `schemathesis run`:
+
+```bash
+# Run with 4 workers on a single machine
+schemathesis run ../e2e/openapi.json \
+  -u https://practice.expandtesting.com/notes/api \
+  -H "x-auth-token:${TOKEN}" \
+  --report junit --report-dir ./results \
+  --workers 4
+
+# Let Schemathesis automatically pick a worker count based on CPU cores
+schemathesis run ../e2e/openapi.json \
+  -u https://practice.expandtesting.com/notes/api \
+  -H "x-auth-token:${TOKEN}" \
+  --report junit --report-dir ./results \
+  --workers auto
+```
+
+Each worker processes a slice of the generated test cases; together they cover the same test space faster. For very large suites you can combine `--workers` with CI‑level sharding (multiple jobs that each run Schemathesis with different filters such as `--include-path` or `--include-operation-id`).
+
 ### Virtual Environment
 
 ```bash
@@ -433,7 +517,7 @@ The script authenticates automatically. If you see auth errors:
 
 ```bash
 # Check your e2e/.env file has correct credentials
-cat ../e2e/.env | grep -E "EMAIL|PASSWORD|BASE_API_URL"
+cat ../e2e/.env | grep -E "EMAIL|PASSWORD|API_URL"
 ```
 
 #### 3. "OpenAPI file not found"

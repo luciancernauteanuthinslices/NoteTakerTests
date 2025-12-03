@@ -118,9 +118,22 @@ jobs:
       # 📊 Summary
       # ═══════════════════════════════════════════════════════════════
 
+      - name: Generate Schemathesis Summary
+        if: always()
+        working-directory: e2e
+        run: |
+          python scripts/summarize_schemathesis_results.py \
+            --ci \
+            --results schemathesis/allure-results \
+            --openapi openapi.json \
+            >> $GITHUB_STEP_SUMMARY || echo "⚠️ Could not generate Schemathesis summary" >> $GITHUB_STEP_SUMMARY
+
       - name: Add Allure Report link to summary
         if: always()
         run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "## 📊 Test Reports" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Available Artifacts" >> $GITHUB_STEP_SUMMARY
