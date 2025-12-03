@@ -6,7 +6,7 @@ Usage:
     python summarize_schemathesis_results.py [path/to/allure-results] [path/to/openapi.json]
 
 If no path is given, defaults to ../schemathesis/allure-results/
-OpenAPI spec defaults to ../openapiClinicalnet.json
+OpenAPI spec defaults to ../openapi.json
 """
 
 import sys

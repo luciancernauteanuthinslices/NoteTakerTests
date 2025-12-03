@@ -26,6 +26,7 @@ A **production-ready** Playwright test automation framework with multi-environme
 - [🚀 Running Tests](#-running-tests)
 - [📊 Reporting](#-reporting)
 - [🔬 Schemathesis API Fuzz Testing](#-schemathesis-api-fuzz-testing)
+- [🤖 LLM Test Report Summarizer](#-llm-test-report-summarizer)
 
 ---
 
@@ -109,6 +110,17 @@ e2e/
 │       ├── pages.ts                  # Page URL paths (with app prefix)
 │       ├── uiPages.ts                # Page URL paths (without prefix)
 │       └── uiUrlBuilder.ts           # URL builder with params
+│
+├── 📁 scripts/                       # 🤖 LLM & utility scripts
+│   ├── run_llm_once.py               # Simple LLM test script
+│   ├── summarize_schemathesis_results.py  # Test result summarizer
+│   └── LLM_SUMMARIZER_GUIDE.md       # LLM setup documentation
+│
+├── 📁 schemathesis/                  # 🔬 API fuzz testing
+│   ├── run_schemathesis.py           # Schemathesis runner
+│   ├── requirements.txt              # Python dependencies
+│   ├── venv/                         # Python virtual environment
+│   └── SCHEMATHESIS_GUIDE.md         # Schemathesis documentation
 │
 ├── 📁 extensions/                    # Browser extensions (e.g., ad blocker)
 ├── 📁 allure-results/                # Allure report data
@@ -813,6 +825,54 @@ For complete setup instructions, configuration options, and troubleshooting, see
 
 ---
 
-**Built with ❤️ using [Playwright](https://playwright.dev) and [Schemathesis](https://schemathesis.io)**
+## 🤖 LLM Test Report Summarizer
+
+This project includes an **LLM-powered summarizer** that generates intelligent recommendations from test results using a local language model.
+
+### Features
+
+- ✅ **Local LLM execution** using llama-cpp-python (no API keys needed)
+- ✅ **Parses JUnit XML** from Schemathesis or any test framework
+- ✅ **Deterministic fallback** when LLM is unavailable
+- ✅ **CI integration** with GitHub Actions job summary
+
+### Quick Start
+
+```bash
+# Navigate to schemathesis folder (has the venv with dependencies)
+cd e2e/schemathesis
+
+# Activate virtual environment
+source venv/bin/activate  # macOS/Linux
+
+# Install llama-cpp-python (if not already installed)
+pip install llama-cpp-python
+
+# Run the summarizer
+python ../scripts/summarize_schemathesis_results.py
+
+# Or in CI mode (clean markdown, no LLM)
+python ../scripts/summarize_schemathesis_results.py --ci
+```
+
+### Model Setup
+
+Download the **Qwen2.5-0.5B-Instruct** model (~400MB) from Hugging Face:
+
+```bash
+# Download the GGUF model
+wget -O ~/Documents/"LLM Models"/Qwen2.5-0.5B-Instruct-Q4_0.gguf \
+  "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf"
+```
+
+### 📖 Full Documentation
+
+For complete setup instructions, LLM parameter tuning, and extending to other report types, see:
+
+**[📚 LLM Summarizer Guide](./e2e/scripts/LLM_SUMMARIZER_GUIDE.md)**
+
+---
+
+**Built with ❤️ using [Playwright](https://playwright.dev), [Schemathesis](https://schemathesis.io), and [llama-cpp-python](https://github.com/abetlen/llama-cpp-python)**
 
 </div>
