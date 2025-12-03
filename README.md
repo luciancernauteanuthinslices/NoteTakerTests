@@ -113,8 +113,10 @@ e2e/
 │
 ├── 📁 scripts/                       # 🤖 LLM & utility scripts
 │   ├── run_llm_once.py               # Simple LLM test script
-│   ├── summarize_schemathesis_results.py  # Test result summarizer
-│   └── LLM_SUMMARIZER_GUIDE.md       # LLM setup documentation
+│   ├── summarize_playwright_results.py    # Playwright report summarizer
+│   ├── summarize_schemathesis_results.py  # Schemathesis report summarizer
+│   ├── PLAYWRIGHT_SUMMARIZER_GUIDE.md     # Playwright summarizer docs
+│   └── LLM_SUMMARIZER_GUIDE.md            # LLM setup documentation
 │
 ├── 📁 schemathesis/                  # 🔬 API fuzz testing
 │   ├── run_schemathesis.py           # Schemathesis runner
@@ -825,16 +827,24 @@ For complete setup instructions, configuration options, and troubleshooting, see
 
 ---
 
-## 🤖 LLM Test Report Summarizer
+## 🤖 LLM Test Report Summarizers
 
-This project includes an **LLM-powered summarizer** that generates intelligent recommendations from test results using a local language model.
+This project includes **LLM-powered summarizers** that generate intelligent recommendations from test results using a local language model.
+
+### Available Summarizers
+
+| Summarizer | Input | Output |
+|------------|-------|--------|
+| **Playwright Summarizer** | Allure JSON (`e2e/allure-results`) | E2E test summary with pass/fail/skip stats |
+| **Schemathesis Summarizer** | JUnit XML (`e2e/schemathesis/allure-results`) | API fuzz test summary with HTTP recommendations |
 
 ### Features
 
 - ✅ **Local LLM execution** using llama-cpp-python (no API keys needed)
-- ✅ **Parses JUnit XML** from Schemathesis or any test framework
+- ✅ **Parses Allure JSON & JUnit XML** from test frameworks
 - ✅ **Deterministic fallback** when LLM is unavailable
 - ✅ **CI integration** with GitHub Actions job summary
+- ✅ **Rich output** with status icons (✅ ❌ ⏭️ 💔), tables, and recommendations
 
 ### Quick Start
 
@@ -848,10 +858,14 @@ source venv/bin/activate  # macOS/Linux
 # Install llama-cpp-python (if not already installed)
 pip install llama-cpp-python
 
-# Run the summarizer
+# Run Playwright summarizer
+python ../scripts/summarize_playwright_results.py
+
+# Run Schemathesis summarizer
 python ../scripts/summarize_schemathesis_results.py
 
-# Or in CI mode (clean markdown, no LLM)
+# CI mode (clean markdown, no LLM)
+python ../scripts/summarize_playwright_results.py --ci
 python ../scripts/summarize_schemathesis_results.py --ci
 ```
 
@@ -861,15 +875,34 @@ Download the **Qwen2.5-0.5B-Instruct** model (~400MB) from Hugging Face:
 
 ```bash
 # Download the GGUF model
-wget -O ~/Documents/"LLM Models"/Qwen2.5-0.5B-Instruct-Q4_0.gguf \
+wget -O ~/Documents/"LLM-Models"/Qwen2.5-0.5B-Instruct-Q4_0.gguf \
   "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf"
+```
+
+### CI Reports
+
+In GitHub Actions, both summarizers output to the job summary:
+
+```markdown
+## 🎭 Playwright E2E Test Summary
+| Status | Count | Percentage |
+| ✅ Passed | 9 | 100% |
+...
+
+---
+
+## 🔬 Schemathesis API Test Summary
+| Category | Count |
+| Missing Allow header | 55 |
+...
 ```
 
 ### 📖 Full Documentation
 
-For complete setup instructions, LLM parameter tuning, and extending to other report types, see:
-
-**[📚 LLM Summarizer Guide](./e2e/scripts/LLM_SUMMARIZER_GUIDE.md)**
+| Guide | Description |
+|-------|-------------|
+| **[📚 Playwright Summarizer Guide](./e2e/scripts/PLAYWRIGHT_SUMMARIZER_GUIDE.md)** | Playwright E2E test report summarizer |
+| **[📚 Schemathesis Summarizer Guide](./e2e/scripts/LLM_SUMMARIZER_GUIDE.md)** | Schemathesis API test summarizer & LLM setup |
 
 ---
 

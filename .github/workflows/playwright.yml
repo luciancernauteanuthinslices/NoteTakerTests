@@ -118,6 +118,18 @@ jobs:
       # 📊 Summary
       # ═══════════════════════════════════════════════════════════════
 
+      - name: Generate Playwright Summary
+        if: always()
+        working-directory: e2e
+        run: |
+          python scripts/summarize_playwright_results.py \
+            --ci \
+            --results allure-results \
+            >> $GITHUB_STEP_SUMMARY || echo "⚠️ Could not generate Playwright summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
       - name: Generate Schemathesis Summary
         if: always()
         working-directory: e2e
