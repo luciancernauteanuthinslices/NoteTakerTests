@@ -1,0 +1,49 @@
+# Docker Compose for Schemathesis API Fuzz Testing
+#
+# Usage:
+#   docker-compose up                    # Run tests
+#   docker-compose up --build            # Rebuild and run
+#   docker-compose run schemathesis bash # Interactive shell
+
+version: '3.8'
+
+services:
+  schemathesis:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: schemathesis-runner
+    env_file:
+      - ../.env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LLM_MODEL_PATH=/app/models/qwen2.5-0.5b-instruct-q4_0.gguf
+    volumes:
+      # Mount results directory for persistence
+      - ./allure-results:/app/allure-results
+      # Mount model directory (optional - for pre-downloaded models)
+      - ./models:/app/models
+      # Mount OpenAPI spec if it changes frequently
+      - ../openapi.json:/app/openapi.json:ro
+    command: >
+      sh -c "
+        python run_schemathesis.py &&
+        echo '---' &&
+        echo 'Generating Summary...' &&
+        python scripts/summarize_schemathesis_results.py --results allure-results --ci
+      "
+
+  # Service for just running the summarizer
+  summarizer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: schemathesis-summarizer
+    volumes:
+      - ./allure-results:/app/allure-results:ro
+      - ./models:/app/models:ro
+    environment:
+      - LLM_MODEL_PATH=/app/models/qwen2.5-0.5b-instruct-q4_0.gguf
+    command: python scripts/summarize_schemathesis_results.py --results allure-results
+    profiles:
+      - tools

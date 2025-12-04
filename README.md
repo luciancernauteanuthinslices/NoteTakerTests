@@ -116,16 +116,21 @@ e2e/
 │   ├── summarize_playwright_results.py    # Playwright report summarizer
 │   ├── summarize_schemathesis_results.py  # Schemathesis report summarizer
 │   ├── PLAYWRIGHT_SUMMARIZER_GUIDE.md     # Playwright summarizer docs
-│   └── LLM_SUMMARIZER_GUIDE.md            # LLM setup documentation
+│   ├── LLM_SUMMARIZER_GUIDE.md            # LLM setup documentation
+│   └── MODEL_SETUP.md                     # LLM model configuration guide
 │
 ├── 📁 schemathesis/                  # 🔬 API fuzz testing
 │   ├── run_schemathesis.py           # Schemathesis runner
 │   ├── requirements.txt              # Python dependencies
+│   ├── Dockerfile                    # Docker image for Schemathesis
+│   ├── docker-compose.yml            # Docker Compose config
 │   ├── venv/                         # Python virtual environment
 │   ├── allure-results/               # Schemathesis results (timestamped)
 │   │   ├── .current-run              # Current run ID marker
 │   │   └── run-YYYYMMDD-HHMMSS/      # Timestamped run folders
 │   └── SCHEMATHESIS_GUIDE.md         # Schemathesis documentation
+│
+├── TESTING_STRATEGY.md               # 🧪 Testing strategy & how to add tests
 │
 ├── 📁 extensions/                    # Browser extensions (e.g., ad blocker)
 ├── 📁 allure-results/                # Playwright results (timestamped)
@@ -841,6 +846,28 @@ In GitHub Actions, Schemathesis produces a separate artifact:
 |----------|-------------|
 | `allure-report` | Playwright E2E test results |
 | `schemathesis-allure-report` | Schemathesis API fuzz test results |
+| `schemathesis-nightly-report` | Nightly fuzz test results (extended) |
+
+### 🌙 Nightly Runs
+
+Schemathesis runs extended API fuzz tests nightly at **2:00 AM UTC** via `.github/workflows/schemathesis-nightly.yml`.
+
+- **More examples per endpoint** (100 vs 50 in regular CI)
+- **Manual trigger available** in GitHub Actions
+- **Separate artifact** for detailed analysis
+
+### 🐳 Docker Support
+
+```bash
+cd e2e/schemathesis
+
+# Run with Docker Compose
+docker-compose up --build
+
+# Or run with Docker directly
+docker build -t schemathesis-runner .
+docker run --env-file ../.env schemathesis-runner
+```
 
 ### 📖 Full Documentation
 
@@ -864,10 +891,12 @@ This project includes **LLM-powered summarizers** that generate intelligent reco
 ### Features
 
 - ✅ **Local LLM execution** using llama-cpp-python (no API keys needed)
+- ✅ **Configurable model path** via `LLM_MODEL_PATH` environment variable
 - ✅ **Parses Allure JSON & JUnit XML** from test frameworks
 - ✅ **Deterministic fallback** when LLM is unavailable
 - ✅ **CI integration** with GitHub Actions job summary
 - ✅ **Rich output** with status icons (✅ ❌ ⏭️ 💔), tables, and recommendations
+- ⚠️ **Hallucination disclaimer** - small 0.5B model may produce imprecise advice
 
 ### Quick Start
 
@@ -898,9 +927,14 @@ Download the **Qwen2.5-0.5B-Instruct** model (~400MB) from Hugging Face:
 
 ```bash
 # Download the GGUF model
-wget -O ~/Documents/"LLM-Models"/Qwen2.5-0.5B-Instruct-Q4_0.gguf \
+curl -L -o ~/Models/Qwen2.5-0.5B-Instruct-Q4_0.gguf \
   "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_0.gguf"
+
+# Set environment variable (add to .bashrc/.zshrc for persistence)
+export LLM_MODEL_PATH=~/Models/Qwen2.5-0.5B-Instruct-Q4_0.gguf
 ```
+
+For detailed setup instructions, see **[MODEL_SETUP.md](./e2e/scripts/MODEL_SETUP.md)**.
 
 ### CI Reports
 
@@ -924,8 +958,10 @@ In GitHub Actions, both summarizers output to the job summary:
 
 | Guide | Description |
 |-------|-------------|
+| **[🧪 Testing Strategy](./e2e/TESTING_STRATEGY.md)** | Testing pyramid, how to add new tests |
 | **[📚 Playwright Summarizer Guide](./e2e/scripts/PLAYWRIGHT_SUMMARIZER_GUIDE.md)** | Playwright E2E test report summarizer |
-| **[📚 Schemathesis Summarizer Guide](./e2e/scripts/LLM_SUMMARIZER_GUIDE.md)** | Schemathesis API test summarizer & LLM setup |
+| **[📚 Schemathesis Summarizer Guide](./e2e/scripts/LLM_SUMMARIZER_GUIDE.md)** | Schemathesis API test summarizer |
+| **[🤖 Model Setup Guide](./e2e/scripts/MODEL_SETUP.md)** | LLM model configuration & download |
 
 ---
 

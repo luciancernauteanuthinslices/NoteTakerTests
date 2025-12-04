@@ -21,7 +21,9 @@ from datetime import datetime
 # Configuration
 # ═══════════════════════════════════════════════════════════════════════════════
 
-MODEL_PATH = "/Users/lucian.cernauteanuthinslices.com/Documents/LLM Models/Qwen2.5-0.5B-Instruct-Q4_0.gguf"
+# LLM Model Path - configurable via environment variable
+DEFAULT_MODEL_PATH = "/Users/lucian.cernauteanuthinslices.com/Documents/LLM Models/Qwen2.5-0.5B-Instruct-Q4_0.gguf"
+MODEL_PATH = os.environ.get("LLM_MODEL_PATH", DEFAULT_MODEL_PATH)
 
 # Default paths (relative to this script)
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -174,6 +176,22 @@ def parse_result_file(json_path: Path) -> dict:
 
 
 
+def parse_environment(results_dir: Path) -> dict:
+    """Parse environment.properties file if it exists."""
+    env_file = results_dir / "environment.properties"
+    env = {}
+    
+    if env_file.exists():
+        with open(env_file, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if line and '=' in line:
+                    key, value = line.split('=', 1)
+                    env[key.strip()] = value.strip()
+    
+    return env
+
+
 def aggregate_results(results: list[dict]) -> dict:
     """
     Aggregate test results into summary statistics.
@@ -190,6 +208,7 @@ def aggregate_results(results: list[dict]) -> dict:
             "avg_duration_ms": int,
             "suites": {suite_name: {"passed": N, "failed": N, ...}},
             "failures": [{"name": ..., "error": ..., "file": ...}],
+            "slowest": [{"name": ..., "duration_ms": ..., "file": ...}],
         }
     """
     stats = {
@@ -202,6 +221,7 @@ def aggregate_results(results: list[dict]) -> dict:
         "total_duration_ms": 0,
         "suites": {},
         "failures": [],
+        "slowest": [],
     }
     
     for r in results:
@@ -229,6 +249,13 @@ def aggregate_results(results: list[dict]) -> dict:
     stats["pass_rate"] = (stats["passed"] / stats["total"] * 100) if stats["total"] > 0 else 0
     stats["avg_duration_ms"] = stats["total_duration_ms"] // stats["total"] if stats["total"] > 0 else 0
     
+    # Find slowest tests (top 5)
+    sorted_by_duration = sorted(results, key=lambda x: x["duration_ms"], reverse=True)
+    stats["slowest"] = [
+        {"name": r["name"], "duration_ms": r["duration_ms"], "file": r["file"]}
+        for r in sorted_by_duration[:5]
+    ]
+    
     return stats
 
 
@@ -248,7 +275,7 @@ def format_duration(ms: int) -> str:
         return f"{minutes}m {seconds:.0f}s"
 
 
-def generate_summary_report(stats: dict) -> str:
+def generate_summary_report(stats: dict, env: dict = None) -> str:
     """Generate the main summary section."""
     lines = []
     
@@ -289,6 +316,18 @@ def generate_summary_report(stats: dict) -> str:
     lines.append(f"- **Average Test Duration:** {format_duration(stats['avg_duration_ms'])}")
     lines.append(f"- **Pass Rate:** {stats['pass_rate']:.1f}%")
     lines.append("")
+    
+    # Environment info
+    if env:
+        lines.append("### 🌍 Environment")
+        lines.append("")
+        lines.append("| Property | Value |")
+        lines.append("|----------|-------|")
+        for key, value in env.items():
+            # Truncate long values
+            display_value = value[:50] + "..." if len(value) > 50 else value
+            lines.append(f"| {key} | `{display_value}` |")
+        lines.append("")
     
     return "\n".join(lines)
 
@@ -335,6 +374,25 @@ def generate_suites_section(suites: dict) -> str:
             f"| {suite} | {counts.get('passed', 0)} | {counts.get('failed', 0)} | "
             f"{counts.get('broken', 0)} | {counts.get('skipped', 0)} |"
         )
+    
+    lines.append("")
+    return "\n".join(lines)
+
+
+def generate_slowest_section(slowest: list[dict]) -> str:
+    """Generate the slowest tests section."""
+    if not slowest:
+        return ""
+    
+    lines = []
+    lines.append("### 🐢 Slowest Tests")
+    lines.append("")
+    lines.append("| Test | Duration | File |")
+    lines.append("|------|----------|------|")
+    
+    for t in slowest:
+        duration = format_duration(t["duration_ms"])
+        lines.append(f"| {t['name']} | {duration} | `{t['file']}` |")
     
     lines.append("")
     return "\n".join(lines)
@@ -391,6 +449,24 @@ def generate_deterministic_recommendations(stats: dict) -> str:
     if len(failing_suites) > 1:
         recommendations.append(
             f"Multiple suites have failures ({', '.join(failing_suites[:3])}) - check for shared dependencies."
+        )
+    
+    # Slowest test recommendations
+    if stats.get("slowest") and len(stats["slowest"]) > 0:
+        slowest = stats["slowest"][0]
+        if slowest["duration_ms"] > 15000:  # > 15 seconds
+            recommendations.append(
+                f"Slowest test '{slowest['name'][:30]}...' takes {format_duration(slowest['duration_ms'])} - consider breaking it into smaller tests."
+            )
+    
+    # Test count recommendations
+    if stats["total"] < 10:
+        recommendations.append(
+            f"Only {stats['total']} tests in suite - consider adding more coverage for critical user flows."
+        )
+    elif stats["total"] > 100:
+        recommendations.append(
+            "Large test suite (100+ tests) - consider organizing into separate projects or using sharding."
         )
     
     if not recommendations:
@@ -557,7 +633,7 @@ Examples:
     return args
 
 
-def generate_markdown_report(stats: dict, include_llm: bool = False, compact: bool = False) -> str:
+def generate_markdown_report(stats: dict, env: dict = None, include_llm: bool = False, compact: bool = False) -> str:
     """Generate a complete markdown report."""
     lines = []
     
@@ -565,16 +641,17 @@ def generate_markdown_report(stats: dict, include_llm: bool = False, compact: bo
     lines.append("## 🎭 Playwright E2E Test Summary")
     lines.append("")
     
-    # Main summary
-    lines.append(generate_summary_report(stats))
+    # Main summary (includes environment if provided)
+    lines.append(generate_summary_report(stats, env))
     
     # Failures (always show if present)
     if stats["failures"]:
         lines.append(generate_failures_section(stats["failures"]))
     
-    # Suites breakdown (skip in compact mode)
+    # Suites breakdown and slowest tests (skip in compact mode)
     if not compact:
         lines.append(generate_suites_section(stats["suites"]))
+        lines.append(generate_slowest_section(stats.get("slowest", [])))
     
     # Recommendations
     lines.append("### 💡 Recommendations")
@@ -590,6 +667,9 @@ def generate_markdown_report(stats: dict, include_llm: bool = False, compact: bo
             lines.append("### 🤖 AI Insights")
             lines.append("")
             lines.append(llm_output)
+            lines.append("")
+            # Add disclaimer for small model
+            lines.append("> ⚠️ **Disclaimer:** AI insights are generated by a small 0.5B parameter model and may occasionally be shallow or imprecise. Always verify recommendations against actual test results.")
             lines.append("")
     
     return "\n".join(lines)
@@ -635,6 +715,9 @@ def main():
             print("No valid results to summarize.", file=sys.stderr)
         sys.exit(0)
     
+    # Parse environment
+    env = parse_environment(args.results)
+    
     # Aggregate statistics
     stats = aggregate_results(results)
     
@@ -643,7 +726,7 @@ def main():
     
     # Generate report
     include_llm = not args.ci and not args.no_llm
-    report = generate_markdown_report(stats, include_llm, args.compact)
+    report = generate_markdown_report(stats, env, include_llm, args.compact)
     
     if args.ci:
         # CI mode: just output clean markdown

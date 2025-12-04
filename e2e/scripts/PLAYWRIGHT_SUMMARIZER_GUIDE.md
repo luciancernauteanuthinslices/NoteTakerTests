@@ -31,8 +31,6 @@ This script parses **Allure JSON results** from Playwright test runs and generat
 - ✅ **Actionable recommendations** based on results
 - ✅ **AI-powered insights** using a local LLM (optional)
 
-> **Note:** Environment info and slowest tests are available in the full Allure HTML report.
-
 ---
 
 ## Features
@@ -41,10 +39,12 @@ This script parses **Allure JSON results** from Playwright test runs and generat
 |---------|-------------|
 | 📊 **Statistics Table** | Pass/fail/skip counts with percentages |
 | ⏱️ **Performance Metrics** | Total and average test duration |
+| 🌍 **Environment Info** | Build number, commit, app URL |
 | ❌ **Failure Details** | Test names, files, and error messages |
 | 📦 **Suite Breakdown** | Results grouped by test suite |
-| 💡 **Recommendations** | Rule-based actionable suggestions |
-| 🤖 **AI Insights** | LLM-generated analysis (optional) |
+| 🐢 **Slowest Tests** | Top 5 slowest tests for optimization |
+| 💡 **Recommendations** | Rule-based actionable suggestions (8 types) |
+| 🤖 **AI Insights** | LLM-generated analysis with disclaimer |
 
 ### Status Icons
 
@@ -245,16 +245,34 @@ python summarize_playwright_results.py --results /path/to/allure-results
 - **Average Test Duration:** 5.0s
 - **Pass Rate:** 88.9%
 
+### 🌍 Environment
+
+| Property | Value |
+|----------|-------|
+| appEnv | `local` |
+| appUrl | `https://practice.expandtesting.com/notes/app` |
+| buildNumber | `31` |
+| commit | `6fe6f3e7...` |
+
 ### 📦 Test Suites
 
 | Suite | ✅ | ❌ | 💔 | ⏭️ |
 |-------|-----|-----|-----|-----|
 | chromium | 8 | 0 | 0 | 1 |
 
+### 🐢 Slowest Tests
+
+| Test | Duration | File |
+|------|----------|------|
+| valid credentials | 3.2s | `login.spec.ts` |
+| failed login - invalid password | 3.2s | `login.spec.ts` |
+| Goes to profile page | 1.7s | `profile.spec.ts` |
+
 ### 💡 Recommendations
 
 1. Review 1 skipped test(s) to ensure they are intentionally disabled.
 2. All tests passing - consider adding more edge case coverage.
+3. Only 9 tests in suite - consider adding more coverage for critical user flows.
 ```
 
 ### With Failures

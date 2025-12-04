@@ -1,0 +1,136 @@
+name: Schemathesis API Fuzz Testing (Nightly)
+
+# Run API fuzz testing nightly at 2 AM UTC
+# Also allows manual triggering for ad-hoc testing
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 2:00 AM UTC every day
+  workflow_dispatch:     # Manual trigger
+    inputs:
+      max_examples:
+        description: 'Maximum examples per endpoint'
+        required: false
+        default: '100'
+
+jobs:
+  api-fuzz-test:
+    runs-on: ubuntu-latest
+    env:
+      APP_URL: https://practice.expandtesting.com/notes/app
+      API_URL: https://practice.expandtesting.com/notes/api
+      ENV: local
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      ALLURE_RUN_ID: nightly-${{ github.run_number }}-${{ github.run_attempt }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Generate .env for Playwright
+        working-directory: e2e
+        run: |
+          cat << EOF > .env
+          APP_URL=${APP_URL}
+          API_URL=${API_URL}
+          ENV=${ENV}
+          ADMIN_EMAIL=${ADMIN_EMAIL}
+          ADMIN_PASSWORD=${ADMIN_PASSWORD}
+          BUILD_NUMBER=${{ github.run_number }}
+          GITHUB_SHA=${{ github.sha }}
+          EOF
+
+      - name: Install Playwright dependencies
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        working-directory: e2e
+        run: npx playwright install --with-deps
+
+      # Run only the login test to register a user and get credentials
+      - name: Setup test user via Playwright
+        working-directory: e2e
+        run: npx playwright test tests/login.spec.ts --project=chromium
+        continue-on-error: true
+
+      # ═══════════════════════════════════════════════════════════════
+      # 🔬 Schemathesis API Fuzz Testing
+      # ═══════════════════════════════════════════════════════════════
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Schemathesis dependencies
+        working-directory: e2e/schemathesis
+        run: pip install -r requirements.txt
+
+      - name: Run Schemathesis API fuzz tests (Extended)
+        working-directory: e2e/schemathesis
+        run: |
+          MAX_EXAMPLES=${{ github.event.inputs.max_examples || '100' }}
+          echo "Running Schemathesis with max_examples=$MAX_EXAMPLES"
+          python run_schemathesis.py --max-examples $MAX_EXAMPLES
+        continue-on-error: true
+
+      - name: Install Allure CLI
+        run: npm install -g allure-commandline
+
+      - name: Generate Schemathesis Allure HTML report
+        if: always()
+        run: |
+          RESULTS_DIR="e2e/schemathesis/allure-results/$ALLURE_RUN_ID"
+          if [ -d "$RESULTS_DIR" ]; then
+            allure generate "$RESULTS_DIR" --clean -o e2e/schemathesis/allure-report
+          else
+            allure generate e2e/schemathesis/allure-results --clean -o e2e/schemathesis/allure-report || echo "No results to generate"
+          fi
+
+      - name: Upload Schemathesis Allure report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: schemathesis-nightly-report
+          path: e2e/schemathesis/allure-report
+
+      # ═══════════════════════════════════════════════════════════════
+      # 📊 Summary
+      # ═══════════════════════════════════════════════════════════════
+
+      - name: Generate Schemathesis Summary
+        if: always()
+        working-directory: e2e
+        run: |
+          echo "## 🌙 Nightly API Fuzz Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Run Time:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Max Examples:** ${{ github.event.inputs.max_examples || '100' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          python scripts/summarize_schemathesis_results.py \
+            --ci \
+            --results schemathesis/allure-results \
+            --openapi openapi.json \
+            >> $GITHUB_STEP_SUMMARY || echo "⚠️ Could not generate Schemathesis summary" >> $GITHUB_STEP_SUMMARY
+
+      - name: Add Report link to summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📊 Reports" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download the **schemathesis-nightly-report** artifact to view detailed results." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### How to View" >> $GITHUB_STEP_SUMMARY
+          echo "1. Download the artifact from the *Artifacts* section" >> $GITHUB_STEP_SUMMARY
+          echo "2. Extract and run: \`allure open /path/to/report\`" >> $GITHUB_STEP_SUMMARY
