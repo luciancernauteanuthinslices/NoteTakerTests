@@ -7,7 +7,17 @@ import { generateRegistrationData, GeneratedUser } from '../../data/userGenerato
 import uiPages from '../../ui/utils/uiPages';
 
 const E2E_ROOT = path.resolve(__dirname, '../../');
-const ENV_FILE_PATH = path.join(E2E_ROOT, '.env');
+
+// Determine env file based on ENV variable (same logic as playwright.config.ts)
+const envName = process.env.ENV ?? 'local';
+const envFileName =
+  envName === 'prod'
+    ? '.env.prod'
+    : envName === 'dev'
+      ? '.env.dev'
+      : '.env';
+
+const ENV_FILE_PATH = path.join(E2E_ROOT, envFileName);
 
 /**
  * Updates the .env file with new user credentials.
@@ -47,7 +57,7 @@ function updateEnvFile(email: string, password: string): void {
   process.env.EMAIL = email;
   process.env.PASSWORD = password;
   
-  console.log(`✅ Updated .env with new user: ${email}`);
+  console.log(`✅ Updated ${envFileName} with new user: ${email}`);
 }
 
 /**
@@ -161,11 +171,19 @@ async function globalSetup(config: FullConfig): Promise<void> {
   fs.mkdirSync(authDir, { recursive: true });
 
   console.log('\n' + '='.repeat(60));
-  console.log('🚀 Global Setup: Creating fresh user for test run');
+  console.log(`🚀 Global Setup: Creating fresh user for test run (ENV: ${envName})`);
+  console.log(`   Using env file: ${envFileName}`);
   console.log('='.repeat(60) + '\n');
 
-  // Generate new user with Faker
+  
+  // Leave this block active (and keep the static user block commented) 
+  // when you want a fresh, unique user for every test run.
+
+  //====================================================
+  // Option A: Auto-register a new user for each test run with Faker
   const newUser = generateRegistrationData();
+  
+  console.log(`Generated user: ${newUser.email}`);
   
   // Register the new user
   await registerNewUser(baseURL as string, newUser);
@@ -180,27 +198,48 @@ async function globalSetup(config: FullConfig): Promise<void> {
     newUser.password,
     storageState as string
   );
+//====================================================
+
+
+// Comment out or remove the Option A block above.
+// Uncomment the static user block below.
+// Ensure EMAIL and PASSWORD are set in the correct env file (.env, .env.dev, .env.prod).
+
+
+//====================================================
+
+// // OPTION B: Use static user from environment (comment out Option A above)
+
+//   console.log(`Logging in with static user: ${process.env.EMAIL}`);
+//   await loginAndSaveState(
+//   baseURL as string,
+//   process.env.EMAIL as string,
+//   process.env.PASSWORD as string,
+//   storageState as string
+// );
+
+//====================================================
+
 
   // Copy primary state for the regular user fixture
   const userStatePath = path.join(authDir, 'user.json');
   fs.copyFileSync(storageState as string, userStatePath);
 
-  // Handle admin user (use existing admin credentials from env, or fallback to new user)
+  // Handle admin user (use existing admin credentials from env only)
   const adminEmail = process.env.ADMIN_EMAIL;
   const adminPassword = process.env.ADMIN_PASSWORD;
   const adminStatePath = path.join(authDir, 'admin.json');
 
-  if (adminEmail && adminPassword && adminEmail !== newUser.email) {
+  if (adminEmail && adminPassword) {
     // Use existing admin credentials
     await loginAndSaveState(baseURL as string, adminEmail, adminPassword, adminStatePath);
   } else {
-    // Use the new user as admin too
-    fs.copyFileSync(storageState as string, adminStatePath);
+    console.log('⚠️  Admin credentials not set; admin.json will not be created');
   }
 
   console.log('\n' + '='.repeat(60));
   console.log('✅ Global Setup Complete');
-  console.log(`   User: ${newUser.email}`);
+  console.log(`   User: ${process.env.EMAIL}`);
   console.log('='.repeat(60) + '\n');
 }
 
