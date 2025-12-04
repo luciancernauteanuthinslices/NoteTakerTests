@@ -154,7 +154,7 @@ We use **Qwen2.5-0.5B-Instruct** - a small but capable instruction-following mod
 
 3. Save to a known location, e.g.:
    ```
-   ~/Documents/LLM Models/Qwen2.5-0.5B-Instruct-Q4_0.gguf
+   ~/Documents/LLM-Models/Qwen2.5-0.5B-Instruct-Q4_0.gguf
    ```
 
 ### Direct Download Link
@@ -247,12 +247,6 @@ This script parses JUnit XML test results and generates actionable recommendatio
 │  JUnit XML      │────▶│  Parse & Categorize │────▶│  Deterministic  │
 │  (allure-results)│     │  Failures           │     │  Recommendations│
 └─────────────────┘     └──────────────────┘     └─────────────────┘
-                                │
-                                ▼
-                        ┌──────────────────┐
-                        │  LLM (optional)  │
-                        │  Additional Tips │
-                        └──────────────────┘
                                 │
                                 ▼
                         ┌──────────────────┐

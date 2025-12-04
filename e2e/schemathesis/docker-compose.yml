@@ -23,6 +23,7 @@ services:
       - ./allure-results:/app/allure-results
       # Mount model directory (optional - for pre-downloaded models)
       - ./models:/app/models
+      - ../scripts:/app/scripts:ro
       # Mount OpenAPI spec if it changes frequently
       - ../openapi.json:/app/openapi.json:ro
     command: >

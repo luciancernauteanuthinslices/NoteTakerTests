@@ -34,11 +34,9 @@ RUN pip install --no-cache-dir llama-cpp-python
 
 # Copy application files
 COPY run_schemathesis.py .
-COPY ../scripts/summarize_schemathesis_results.py ./scripts/
-COPY ../openapi.json ./openapi.json
 
 # Create directories
-RUN mkdir -p allure-results models
+RUN mkdir -p allure-results models scripts
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1
