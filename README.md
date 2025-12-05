@@ -249,6 +249,8 @@ BASE_API_URL=https://practice.expandtesting.com/notes/api
 # ═══════════════════════════════════════════════════════════
 EMAIL=your-email@example.com
 PASSWORD=your-password
+# These can be static test credentials managed outside the test run
+# (see "Authentication Methods" – Method 1, static user variant).
 
 # ═══════════════════════════════════════════════════════════
 # 👥 MULTI-ROLE CREDENTIALS (for authSetup)
@@ -281,7 +283,7 @@ The framework supports testing with multiple user roles (admin, normal user).
 ```
 e2e/data/auth/
 ├── admin.json    # Admin session state
-└── user.json     # Normal user session state
+└── user.json     # Normal user session storage
 ```
 
 ### Auth Setup (`tests/setup/authSetup.ts`)
@@ -360,7 +362,7 @@ projects: [
 - **File:** `tests/setup/globalSetup.ts`
 - **Storage:** `data/storageState.json`
 - **Best for:** Most test scenarios with single user
- - **Behavior:** Registers a fresh user via the UI on each test run and updates `.env` with the new `EMAIL` / `PASSWORD` values.
+- **Behavior:** Registers a fresh user via the UI on each test run and updates the active env file (`.env`, `.env.dev` or `.env.prod`, depending on `ENV`) with the new `EMAIL` / `PASSWORD` values.
 
 ```typescript
 // playwright.config.ts
@@ -376,11 +378,83 @@ When Playwright starts, `globalSetup` will:
 
 - Generate random registration data via `data/userGenerator.ts`.
 - Open the registration page and create a new account using `RegistrationPage`.
-- Persist the new credentials into `e2e/.env` (`EMAIL` and `PASSWORD`), preserving other environment variables.
+- Persist the new credentials into the active env file (`.env`, `.env.dev` or `.env.prod`), preserving other environment variables.
 - Log in once with this user and save `data/storageState.json`.
 - Copy that state to `data/auth/user.json` and `data/auth/admin.json` (or reuse the same state if dedicated admin credentials are not provided).
 
 This ensures that every test run uses a clean user account and avoids data pollution between runs.
+
+#### Login strategy options in `globalSetup.ts`
+
+There are two ways to log in and create `data/storageState.json`. You control them by commenting/uncommenting blocks in `tests/setup/globalSetup.ts`:
+
+- **Option A – Login each run with new user using Faker (default)**
+
+```typescript
+// Login each run with new user using Faker
+
+// Generate new user with Faker
+const newUser = generateRegistrationData();
+  
+console.log(`Generated user: ${newUser.email}`);
+  
+// Register the new user
+await registerNewUser(baseURL as string, newUser);
+  
+// Update env file with new credentials
+updateEnvFile(newUser.email, newUser.password);
+  
+// Login and save storage state
+await loginAndSaveState(
+  baseURL as string,
+  newUser.email,
+  newUser.password,
+  storageState as string
+);
+```
+
+Leave this block active (and keep the static user block commented) when you want a fresh, unique user for every test run.
+
+- **Option B – Login with static user from environment**
+
+```typescript
+// Login with static user from environment
+console.log(`Logging in with static user: ${process.env.EMAIL}`);
+  
+await loginAndSaveState(
+  baseURL as string,
+  process.env.EMAIL as string,
+  process.env.PASSWORD as string,
+  storageState as string
+);
+```
+
+To use this option instead of auto-registration:
+
+- Comment out or remove the Option A block above.
+- Uncomment the static user block.
+- Ensure `EMAIL` and `PASSWORD` are set in the correct env file (`.env`, `.env.dev`, `.env.prod`).
+
+#### Variant: Static Test User (No Per-Run Registration)
+
+If you prefer to use a static test account instead of registering a new user on each run:
+
+- Create a dedicated test user in the application (for example, `testuser@example.com`).
+- Set `EMAIL` and `PASSWORD` in `e2e/.env` to that user's credentials (see the *Multi-Environment Setup* section).
+- Configure your `globalSetup` implementation to skip the registration step and only log in with these credentials to produce `data/storageState.json`.
+ Remove / skip:
+ ```typescript
+// Register the new user
+  await registerNewUser(baseURL as string, newUser);
+  
+  // Update .env with new credentials
+  updateEnvFile(newUser.email, newUser.password);
+  ```
+Instead, call 
+loginAndSaveState
+ with process.env.EMAIL and process.env.PASSWORD to create storageState from those static credentials.
+
+This approach is useful when user creation is handled by a separate seeding job or when you want fully deterministic credentials across runs.
 
 ### Method 2: Auth Setup Project (Multi-Role)
 

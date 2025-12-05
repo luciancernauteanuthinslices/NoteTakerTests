@@ -25,6 +25,13 @@ playwright/.cache/
 .env.*
 !.env.example
 
+#auth json files
+data/auth/
+
+#storagestate json files
+data/storageState.json
+
+
 # OS / IDE
 .DS_Store
 Thumbs.db
