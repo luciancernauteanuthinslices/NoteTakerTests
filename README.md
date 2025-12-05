@@ -356,15 +356,28 @@ projects: [
 ---
 
 ## 🔐 Authentication Methods
-
-### Method 1: Global Setup (Single User) ✅ **Default**
-
-- **File:** `tests/setup/globalSetup.ts`
+ 
+ At a high level:
+ 
+ - **Dynamic env selection** via `ENV` → `.env`, `.env.dev`, `.env.prod`
+ - **Method 1: Global Setup (single user)** supports:
+   - **Option A:** Faker-based registration (fresh user each run)
+   - **Option B:** Static user from env (`EMAIL` / `PASSWORD`)
+   - **Variant:** Static test user (no per-run registration)
+ - **Method 2:** UI-based multi-role auth project (`authSetup`)
+ - **Method 3:** API token fixture for API-only tests
+ 
+ ### Method 1: Global Setup (Single User) ✅ **Default**
+ 
+ - **File:** `tests/setup/globalSetup.ts`
 - **Storage:** `data/storageState.json`
 - **Best for:** Most test scenarios with single user
 - **Behavior:** Registers a fresh user via the UI on each test run and updates the active env file (`.env`, `.env.dev` or `.env.prod`, depending on `ENV`) with the new `EMAIL` / `PASSWORD` values.
 
 ```typescript
+import { test as setup } from '@playwright/test';
+import { RegistrationPage } from '../../ui/pages/registrationPage';
+import { LoginPage } from '../../ui/pages/loginPage';
 // playwright.config.ts
 export default defineConfig({
   globalSetup: require.resolve('./tests/setup/globalSetup'),

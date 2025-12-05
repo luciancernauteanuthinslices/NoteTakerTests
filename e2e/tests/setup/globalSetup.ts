@@ -18,7 +18,6 @@ const envFileName =
       : '.env';
 
 const ENV_FILE_PATH = path.join(E2E_ROOT, envFileName);
-
 /**
  * Updates the .env file with new user credentials.
  * Preserves other environment variables.
